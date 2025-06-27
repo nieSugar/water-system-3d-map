@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>办结率环形进度</title>
+    <style>
+        .progress-container {
+            width: 180px;
+            height: 180px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            background: url('./样式一.png')no-repeat;
+            background-size: 100% 100%;
+            
+        }
+
+        .progress-squares {
+            position: absolute;
+            width: 160px;
+            height: 160px;
+            /* left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%); */
+            top: 10%;
+            transform: rotateX(41deg) rotateY(180deg);
+            pointer-events: none;
+        }
+
+        .progress-square {
+            position: absolute;
+            width: 12px;
+            height: 16px;
+            border-radius: 2px;
+            transition: opacity 0.3s, background 0.3s;
+            clip-path: polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%);
+        }
+
+
+        .progress-text {
+            position: absolute;
+            width: 100%;
+            top: 38%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 2;
+        }
+
+        .percent-num {
+            font-size: 44px;
+            color: #fff;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-shadow: 0 0 12px #00bfff, 0 0 2px #fff;
+            vertical-align: middle;
+        }
+
+        .percent-sign {
+            font-size: 18px;
+            color: #00bfff;
+            vertical-align: super;
+            margin-left: 2px;
+            text-shadow: 0 0 8px #00bfff;
+            font-weight: bold;
+            position: relative;
+            top: -8px;
+        }
+
+        .label {
+            font-size: 22px;
+            color: #000;
+            margin-top: 8px;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+<div style="text-align: center;width:180px;height:200px;">
+    <div class="progress-container">
+        <div class="progress-squares"></div>
+        <div class="progress-text">
+            <span class="percent-num">98.88</span>
+            <span class="percent-sign">%</span>
+            
+        </div>
+    </div>
+    <img src="./22.png" alt="" style="width:100px;height:120px;position: absolute;top: 10px;left: 50px;">
+    <div class="label">办结率</div>
+</div>
+<script>
+const percent = 84.58; //这个是进度调的百分比
+const totalSquares = 20;  //这个是梯形的数量
+const showSquares = percent * totalSquares / 100;
+const fullSquares = Math.floor(showSquares); 
+const partialPercent = showSquares - fullSquares; 
+
+const radius = 68; // 这个是圆形的半径
+const center = 80; // 这个是圆形的中心点
+const squareWidth = 13; // 这个是梯形的宽度
+const squareHeight =8; // 这个是梯形的高度
+
+const startColor = [0, 255, 255];
+const endColor = [0, 191, 255];
+
+function getGradientColor(start, end, percent) {
+    const r = Math.round(start[0] + (end[0] - start[0]) * percent);
+    const g = Math.round(start[1] + (end[1] - start[1]) * percent);
+    const b = Math.round(start[2] + (end[2] - start[2]) * percent);
+    return `rgb(${r},${g},${b})`;
+}
+
+const squaresContainer = document.querySelector('.progress-squares');
+squaresContainer.innerHTML = '';
+
+for (let i = 0; i < totalSquares; i++) {
+    const square = document.createElement('div');
+    square.className = 'progress-square';
+    // 梯形clip-path
+    square.style.width = `${squareWidth}px`;
+    square.style.height = `${squareHeight}px`;
+    square.style.clipPath = 'polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%)';
+
+    // 环绕分布
+    const angle = (i / totalSquares) * 2 * Math.PI - Math.PI / 2;
+    const x = center + radius * Math.cos(angle) - squareWidth / 2;
+    const y = center + radius * Math.sin(angle) - squareHeight / 2;
+    square.style.left = `${x}px`;
+    square.style.top = `${y}px`;
+    square.style.transform = `rotate(${(angle + Math.PI / 2) * 180 / Math.PI}deg)`;
+
+    if (i < fullSquares) {
+        // 完全填充
+        const colorPercent = i / totalSquares;
+        square.style.background = getGradientColor(startColor, endColor, colorPercent);
+        square.style.opacity = 1;
+        square.style.boxShadow = '0 0 8px #00bfff, 0 0 2px #fff';
+    } else if (i === fullSquares && partialPercent > 0) {
+        // 部分填充（横向渐变，从左到右）
+        const colorPercent = i / totalSquares;
+        square.style.background = `linear-gradient(to right, ${getGradientColor(startColor, endColor, colorPercent)} ${partialPercent * 100}%, rgba(10,58,90,0.18) ${partialPercent * 100}%)`;
+        square.style.opacity = 1;
+        square.style.boxShadow = '0 0 8px #00bfff, 0 0 2px #fff';
+    } else {
+        // 未填充
+        square.style.background = '#0a3a5a';
+        square.style.opacity = 0.18;
+        square.style.boxShadow = 'none';
+    }
+    squaresContainer.appendChild(square);
+}
+document.querySelector('.percent-num').textContent = percent.toFixed(2);
+</script>
+</body>
+
+</html>
