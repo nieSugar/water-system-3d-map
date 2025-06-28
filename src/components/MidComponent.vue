@@ -15,7 +15,7 @@
 <script setup lang="ts">
 import { ref, type Ref, onMounted } from 'vue';
 // 导入自定义的Three.js工具类
-import { useThree, THREEMAP, EventCaster } from './util';
+import { useThree, THREEMAP, EventCaster } from './three-utils';
 // 导入CSS2D渲染器，用于在3D场景中显示HTML元素
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js'
 // 导入沈阳市地图纹理图片
@@ -40,6 +40,19 @@ const { scene, renderer, camera } = useThree(containerRef, {
 // 参数：x=-100（左右位置）, y=400（高度）, z=350（前后距离）
 camera.position.set(-100, 400, 350);
 
+// 添加额外的光照效果，增强3D立体感
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+directionalLight.position.set(100, 200, 100);
+directionalLight.castShadow = true;
+scene.add(directionalLight);
+
+// 添加环境光，确保所有区域都有基础照明
+const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+scene.add(ambientLight);
+
+// 设置场景背景色，类似图片中的深蓝色背景
+scene.background = new THREE.Color(0x0a1a2e);
+
 // 创建事件投射器，用于处理3D对象的鼠标交互
 const eventCaster = new EventCaster(camera, renderer.domElement)
 // 组件挂载后初始化3D地图
@@ -49,6 +62,7 @@ onMounted(() => {
     .then(res => res.json())
     .then(shenyang => {
       // 创建3D地图对象，传入地理数据和区域配色方案
+      // 使用更鲜艳的颜色和渐变效果
       const map = new THREEMAP(shenyang,
         [
           // 主城区 - 使用蓝色系 (0x5dade2)
@@ -103,16 +117,38 @@ onMounted(() => {
 
       // 将完整的3D地图添加到场景中
       scene.add(map)
+      // 添加区域标签，类似图片中的效果
+      addRegionLabels(scene)
     })
-
-    // 创建CSS2D标签示例
-    const div = document.createElement('div')
-    div.innerText = '22222'                    // 标签文本内容
-    div.style.backgroundImage = ''             // 标签背景样式
-    const panel = new CSS2DObject(div)         // 创建CSS2D对象
-    panel.position.set(-33, 20, 9)             // 设置标签3D位置
-    scene.add(panel)                           // 添加到场景中
 })
+
+// 添加区域标签函数
+function addRegionLabels(scene: any) {
+  // 定义需要显示标签的区域及其大致位置
+  const regionLabels = [
+    { name: '康平县', position: [-50, 35, 50], color: '#ffffff' },
+    { name: '法库县', position: [20, 35, 30], color: '#ffffff' },
+    { name: '新民市', position: [-80, 35, -20], color: '#ffffff' },
+    { name: '辽中区', position: [-30, 35, -40], color: '#ffffff' },
+    { name: '沈阳市区', position: [0, 35, 0], color: '#ffffff' }
+  ]
+
+  regionLabels.forEach(region => {
+    const labelDiv = document.createElement('div')
+    labelDiv.innerText = region.name
+    labelDiv.style.color = region.color
+    labelDiv.style.fontSize = '14px'
+    labelDiv.style.fontWeight = 'bold'
+    labelDiv.style.textShadow = '2px 2px 4px rgba(0,0,0,0.8)'
+    labelDiv.style.pointerEvents = 'none'
+    labelDiv.style.userSelect = 'none'
+    labelDiv.style.fontFamily = 'Arial, sans-serif'
+
+    const label = new CSS2DObject(labelDiv)
+    label.position.set(region.position[0], region.position[1], region.position[2])
+    scene.add(label)
+  })
+}
 </script>
 
 <!-- 更新颜色方案\nconst colorMap: Record<string, number> = {\n  '康平县': 0xff0000,\n  '法库县': 0xff0000,\n  '新民市': 0xf7d358,\n  '辽中区': 0xf7d358,\n  '于洪区': 0x5dade2,\n  '沈北新区': 0x5dade2,\n  '大东区': 0x5dade2,\n  '和平区': 0x5dade2,\n  '沈河区': 0x5dade2,\n  '皇姑区': 0x5dade2,\n  '铁西区': 0x5dade2,\n  '浑南区': 0x5dade2,\n  '苏家屯区': 0x5dade2\n};\n\n// 设置透明度\nlet opacity = 0.85;\nif (['康平县', '法库县'].includes(name)) {\n  opacity = 0.6; // 透明红色\n} else if (['新民市', '辽中区'].includes(name)) {\n  opacity = 0.8; // 渐变黄色\n}\n\nconst material = new THREE.MeshPhongMaterial({ \n  color: colorMap[name] || 0x1e90ff,\n  side: THREE.DoubleSide, \n  transparent: true, \n  opacity\n});\n\n// 为康平县和法库县之间添加白色分割虚线\nif (['康平县', '法库县'].includes(name)) {\n  const borderMaterial = new THREE.LineDashedMaterial({ \n    color: 0xffffff, \n    dashSize: 10, \n    gapSize: 6, \n    linewidth: 1\n  });\n  const borderLine = new THREE.Line(borderGeometry, borderMaterial);\n  borderLine.computeLineDistances();\n  group.add(borderLine);\n} -->
