@@ -55,6 +55,10 @@ scene.background = new THREE.Color(0x0a1a2e);
 
 // 创建事件投射器，用于处理3D对象的鼠标交互
 const eventCaster = new EventCaster(camera, renderer.domElement)
+
+// ThreeMap 实例将被赋值到该变量，供其他辅助函数访问
+let map: any
+
 // 组件挂载后初始化3D地图
 onMounted(() => {
   // 异步加载沈阳市GeoJSON地理数据
@@ -63,7 +67,7 @@ onMounted(() => {
     .then(shenyang => {
       // 创建3D地图对象，传入地理数据和区域配色方案
       // 使用更鲜艳的颜色和渐变效果
-      const map = new THREEMAP(shenyang,
+      map = new THREEMAP(shenyang,
         [
           // 主城区 - 使用蓝色系 (0x5dade2)
           { 'name': '于洪区', 'color': 0x5dade2 },
@@ -121,6 +125,10 @@ onMounted(() => {
       // 初始化GUI调试面板
       map.initGUI()
 
+      // 为特定区域组合添加统一实线外边界，且保留内部虚线边界
+      addClusterOutline(shenyang, ['康平县', '法库县'])
+      addClusterOutline(shenyang, ['新民市', '辽中区'])
+
       // 添加区域标签，类似图片中的效果
       // addRegionLabels(scene)
     })
@@ -152,6 +160,74 @@ function addRegionLabels(scene: any) {
     label.position.set(region.position[0], region.position[1], region.position[2])
     scene.add(label)
   })
+}
+
+// 为由多个行政区组成的整体添加实线外边界
+function addClusterOutline(shenyangData: any, names: string[]) {
+  // 获取三维地图实例上的 D3 投影函数
+  // THREEMAP 中 projection 为私有属性，这里通过 any 绕过类型限制
+  // eslint-disable-next-line
+  const projection = (map as any).projection as (lnglat: [number, number]) => [number, number]
+
+  // 统一的实线材质（白色，线宽稍粗）
+  const material = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2, depthTest: false })
+
+  const clusterGroup = new THREE.Group()
+  clusterGroup.name = names.join('-') + '-solid-outline'
+
+  const TOP_HEIGHT = 30.5 // 挤出厚度 30，再抬高 0.5 避免 Z-Fighting
+
+  // Map 用于统计每条边出现的次数，key 为 "x1,y1|x2,y2"（小->大 方向统一）
+  const edgeCount: Map<string, { p1: [number, number], p2: [number, number], count: number }> = new Map()
+
+  // 收集所有边
+  names.forEach((n) => {
+    const feature = shenyangData.features.find((f: any) => f.properties.name === n)
+    if (!feature) return
+
+    const polys: [number, number][][][] = feature.geometry.type === 'Polygon'
+      ? [feature.geometry.coordinates]
+      : feature.geometry.coordinates
+
+    polys.forEach((poly) => {
+      const exterior = poly[0]
+      for (let i = 0; i < exterior.length; i++) {
+        const a = exterior[i]
+        const b = exterior[(i + 1) % exterior.length]
+
+        const key = a[0] < b[0] || (a[0] === b[0] && a[1] < b[1])
+          ? `${a[0]},${a[1]}|${b[0]},${b[1]}`
+          : `${b[0]},${b[1]}|${a[0]},${a[1]}`
+
+        if (!edgeCount.has(key)) {
+          edgeCount.set(key, { p1: a as [number, number], p2: b as [number, number], count: 1 })
+        } else {
+          const obj = edgeCount.get(key)!
+          obj.count += 1
+        }
+      }
+    })
+  })
+
+  // 仅保留出现一次的边（外轮廓）
+  const outerPositions: number[] = []
+  edgeCount.forEach(({ p1, p2, count }) => {
+    if (count === 1) {
+      const [x1, y1] = projection(p1) as [number, number]
+      const [x2, y2] = projection(p2) as [number, number]
+      outerPositions.push(x1, -y1, TOP_HEIGHT)
+      outerPositions.push(x2, -y2, TOP_HEIGHT)
+    }
+  })
+
+  if (outerPositions.length > 0) {
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(outerPositions, 3))
+    const lineSeg = new THREE.LineSegments(geometry, material)
+    clusterGroup.add(lineSeg)
+  }
+
+  map.add(clusterGroup)
 }
 </script>
 
