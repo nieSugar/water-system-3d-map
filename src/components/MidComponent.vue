@@ -103,22 +103,26 @@ onMounted(() => {
       scene.add(psp)
 
       // 为地图的每个区域添加点击事件监听
-      map.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-          eventCaster.addListener(child, 'click', (result) => {
-            console.log('点击区域:', result);
-            // 在点击位置创建新的标记点
-            sprite.position.copy(result.point)  // 复制点击位置坐标
-            sprite.position.y += 10             // 标记点稍微抬高，避免与地面重叠
-            scene.add(sprite)                   // 将标记点添加到场景
-          })
-        }
-      })
+      // map.traverse((child) => {
+      //   if (child instanceof THREE.Mesh) {
+      //     eventCaster.addListener(child, 'click', (result) => {
+      //       console.log('点击区域:', result);
+      //       // 在点击位置创建新的标记点
+      //       sprite.position.copy(result.point)  // 复制点击位置坐标
+      //       sprite.position.y += 10             // 标记点稍微抬高，避免与地面重叠
+      //       scene.add(sprite)                   // 将标记点添加到场景
+      //     })
+      //   }
+      // })
 
       // 将完整的3D地图添加到场景中
       scene.add(map)
+
+      // 初始化GUI调试面板
+      map.initGUI()
+
       // 添加区域标签，类似图片中的效果
-      addRegionLabels(scene)
+      // addRegionLabels(scene)
     })
 })
 

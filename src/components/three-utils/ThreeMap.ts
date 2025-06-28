@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import * as d3 from 'd3';
+import { GUI } from 'lil-gui';
 
 /**
  * THREEMAP 类 - GeoJSON 转 3D 地图渲染器
@@ -32,6 +33,26 @@ export class THREEMAP extends THREE.Group {
 
   private texture: THREE.Texture | null  // 地图纹理贴图
   private series: { [keyof: string]: number } = {}  // 区域名称到颜色的映射
+
+  // GUI 调试相关属性
+  private gui: GUI | null = null
+  private dashedLineParams = {
+    color: 0xffffff,
+    linewidth: 0.1,
+    scale: 0.1,
+    dashSize: 3,
+    gapSize: 15,
+    opacity: 1,
+    enabled: true
+  }
+  private solidLineParams = {
+    color: 0xffffff,
+    linewidth: 2,
+    opacity: 1.0,
+    enabled: true
+  }
+  private allOutlines: THREE.LineSegments[] = []  // 存储所有虚线轮廓对象
+  private allSolidOutlines: THREE.Group[] = []  // 存储所有实线轮廓对象
 
   /**
    * 构造函数
@@ -113,6 +134,12 @@ export class THREEMAP extends THREE.Group {
    * @param geometry - 几何体对象
    * @param name - 轮廓名称
    * @param options - 虚线样式选项
+   * @param options.color - 虚线颜色 (默认: 0x4a90e2 柔和蓝色)
+   * @param options.linewidth - 线宽 (默认: 1.5)
+   * @param options.scale - 虚线缩放 (默认: 1)
+   * @param options.dashSize - 虚线段长度 (默认: 3)
+   * @param options.gapSize - 虚线间隙长度 (默认: 2)
+   * @param options.opacity - 透明度，0-1之间 (默认: 0.6)
    * @returns 虚线轮廓对象
    */
   createDashedOutline = (
@@ -124,14 +151,17 @@ export class THREEMAP extends THREE.Group {
       scale?: number
       dashSize?: number
       gapSize?: number
+      opacity?: number
     } = {}
   ) => {
+    // 使用GUI参数作为默认值，如果options中没有指定的话
     const {
-      color = 0xffffff,      // 默认绿色
-      linewidth = 2,         // 默认线宽
-      scale = 1,             // 默认缩放
-      dashSize = 5,        // 默认虚线段长度
-      gapSize = 8,           // 默认虚线间隙长度
+      color = this.dashedLineParams.color,
+      linewidth = this.dashedLineParams.linewidth,
+      scale = this.dashedLineParams.scale,
+      dashSize = this.dashedLineParams.dashSize,
+      gapSize = this.dashedLineParams.gapSize,
+      opacity = this.dashedLineParams.opacity,
     } = options
 
     const edgesGeometry = new THREE.EdgesGeometry(geometry)
@@ -141,12 +171,88 @@ export class THREEMAP extends THREE.Group {
       scale,
       dashSize,
       gapSize,
+      opacity,
+      transparent: opacity < 1.0, // 当透明度小于1时启用透明
     })
     const outLine = new THREE.LineSegments(edgesGeometry, dashedLineMaterial)
     outLine.computeLineDistances() // 计算线段距离，虚线材质需要
     outLine.name = name + '-outline'
+    outLine.visible = this.dashedLineParams.enabled
+
+    // 将轮廓添加到数组中以便GUI控制
+    this.allOutlines.push(outLine)
 
     return outLine
+  }
+
+  /**
+   * 创建实线轮廓（通过多条线模拟线宽效果）
+   * @param geometry - 几何体对象
+   * @param name - 轮廓名称
+   * @param options - 实线样式选项
+   * @param options.color - 实线颜色 (默认: 使用GUI参数)
+   * @param options.linewidth - 线宽 (默认: 使用GUI参数)
+   * @param options.opacity - 透明度，0-1之间 (默认: 使用GUI参数)
+   * @returns 实线轮廓组对象
+   */
+  createSolidOutline = (
+    geometry: THREE.BufferGeometry,
+    name: string,
+    options: {
+      color?: number
+      linewidth?: number
+      opacity?: number
+    } = {}
+  ) => {
+    // 使用GUI参数作为默认值，如果options中没有指定的话
+    const {
+      color = this.solidLineParams.color,
+      linewidth = this.solidLineParams.linewidth,
+      opacity = this.solidLineParams.opacity,
+    } = options
+
+    // 创建一个组来包含多条线
+    const outlineGroup = new THREE.Group()
+    outlineGroup.name = name + '-solid-outline'
+    outlineGroup.visible = this.solidLineParams.enabled
+
+    // 获取边缘几何体
+    const edgesGeometry = new THREE.EdgesGeometry(geometry)
+
+    // 创建基础材质
+    const solidLineMaterial = new THREE.LineBasicMaterial({
+      color: color,
+      opacity: opacity,
+      transparent: opacity < 1.0,
+    })
+
+    // 根据线宽创建多条线来模拟粗线效果
+    const lineCount = Math.max(1, Math.floor(linewidth))
+    const offset = linewidth * 0.001 // 偏移量，用于创建多条线
+
+    for (let i = 0; i < lineCount; i++) {
+      const clonedGeometry = edgesGeometry.clone()
+      const clonedMaterial = solidLineMaterial.clone()
+
+      // 为每条线添加微小的偏移
+      if (i > 0) {
+        const positions = clonedGeometry.attributes.position.array
+        for (let j = 0; j < positions.length; j += 3) {
+          positions[j] += (Math.random() - 0.5) * offset     // x偏移
+          positions[j + 1] += (Math.random() - 0.5) * offset // y偏移
+          positions[j + 2] += (Math.random() - 0.5) * offset // z偏移
+        }
+        clonedGeometry.attributes.position.needsUpdate = true
+      }
+
+      const line = new THREE.LineSegments(clonedGeometry, clonedMaterial)
+      outlineGroup.add(line)
+    }
+
+    // 将实线轮廓组添加到数组中以便GUI控制
+    this.allSolidOutlines.push(outlineGroup)
+
+    return outlineGroup
   }
 
   /**
@@ -158,8 +264,15 @@ export class THREEMAP extends THREE.Group {
     const { geometry } = this.createArea(geojson.geometry.coordinates)
     geometry.name = name + '-geometry'
 
-    // 创建虚线轮廓
-    const outLine = this.createDashedOutline(geometry, name)
+    // 根据区域名称决定使用实线还是虚线轮廓
+    let outLine: THREE.LineSegments
+    if (name === '法库县') {
+      // 法库县使用实线轮廓（使用GUI参数）
+      outLine = this.createSolidOutline(geometry, name)
+    } else {
+      // 其他区域使用虚线轮廓
+      outLine = this.createDashedOutline(geometry, name)
+    }
 
     const material = new THREE.MeshLambertMaterial()
     material.map = this.texture
@@ -231,8 +344,15 @@ export class THREEMAP extends THREE.Group {
         const { geometry } = this.createArea(coordinates)
         geometry.name = name + (i + 1) + '-geometry'
 
-        // 创建虚线轮廓
-        const outLine = this.createDashedOutline(geometry, name + (i + 1))
+        // 根据区域名称决定使用实线还是虚线轮廓
+        let outLine: THREE.LineSegments
+        if (name === '法库县') {
+          // 法库县使用实线轮廓（使用GUI参数）
+          outLine = this.createSolidOutline(geometry, name + (i + 1))
+        } else {
+          // 其他区域使用虚线轮廓
+          outLine = this.createDashedOutline(geometry, name + (i + 1))
+        }
 
         const mesh = new THREE.Mesh(geometry, material)
         mesh.castShadow = true;
@@ -276,5 +396,155 @@ export class THREEMAP extends THREE.Group {
     // 厚度设置为10
     const geometry = new THREE.ExtrudeGeometry(shape, { depth: 30 })
     return { geometry, shape }
+  }
+
+  /**
+   * 初始化GUI调试界面
+   */
+  initGUI() {
+    if (this.gui) {
+      this.gui.destroy()
+    }
+
+    this.gui = new GUI({ title: '轮廓线调试' })
+
+    // 虚线控制面板
+    const dashedFolder = this.gui.addFolder('虚线控制')
+
+    // 启用/禁用虚线
+    dashedFolder.add(this.dashedLineParams, 'enabled').name('启用虚线').onChange(() => {
+      this.updateAllOutlines()
+    })
+
+    // 虚线颜色控制
+    dashedFolder.addColor(this.dashedLineParams, 'color').name('颜色').onChange(() => {
+      this.updateAllOutlines()
+    })
+
+    // 虚线线宽控制
+    dashedFolder.add(this.dashedLineParams, 'linewidth', 0.1, 10, 0.1).name('线宽').onChange(() => {
+      this.updateAllOutlines()
+    })
+
+    // 虚线缩放控制
+    dashedFolder.add(this.dashedLineParams, 'scale', 0.1, 10, 0.1).name('缩放').onChange(() => {
+      this.updateAllOutlines()
+    })
+
+    // 虚线段长度控制
+    dashedFolder.add(this.dashedLineParams, 'dashSize', 0.1, 20, 0.1).name('虚线段长度').onChange(() => {
+      this.updateAllOutlines()
+    })
+
+    // 虚线间隙控制
+    dashedFolder.add(this.dashedLineParams, 'gapSize', 0.1, 20, 0.1).name('虚线间隙').onChange(() => {
+      this.updateAllOutlines()
+    })
+
+    // 虚线透明度控制
+    dashedFolder.add(this.dashedLineParams, 'opacity', 0, 1, 0.01).name('透明度').onChange(() => {
+      this.updateAllOutlines()
+    })
+
+    // 实线控制面板
+    const solidFolder = this.gui.addFolder('实线控制')
+
+    // 启用/禁用实线
+    solidFolder.add(this.solidLineParams, 'enabled').name('启用实线').onChange(() => {
+      this.updateAllSolidOutlines()
+    })
+
+    // 实线颜色控制
+    solidFolder.addColor(this.solidLineParams, 'color').name('颜色').onChange(() => {
+      this.updateAllSolidOutlines()
+    })
+
+    // 实线线宽控制
+    solidFolder.add(this.solidLineParams, 'linewidth', 0.1, 10, 0.1).name('线宽').onChange(() => {
+      this.updateAllSolidOutlines()
+    })
+
+    // 实线透明度控制
+    solidFolder.add(this.solidLineParams, 'opacity', 0, 1, 0.01).name('透明度').onChange(() => {
+      this.updateAllSolidOutlines()
+    })
+
+    // 默认展开虚线面板
+    dashedFolder.open()
+    // 默认展开实线面板
+    solidFolder.open()
+  }
+
+  /**
+   * 更新所有虚线轮廓的样式
+   */
+  private updateAllOutlines() {
+    this.allOutlines.forEach(outline => {
+      if (this.dashedLineParams.enabled) {
+        outline.visible = true
+        const material = outline.material as THREE.LineDashedMaterial
+        material.color.setHex(this.dashedLineParams.color)
+        material.linewidth = this.dashedLineParams.linewidth
+        material.scale = this.dashedLineParams.scale
+        material.dashSize = this.dashedLineParams.dashSize
+        material.gapSize = this.dashedLineParams.gapSize
+        material.opacity = this.dashedLineParams.opacity
+        material.transparent = this.dashedLineParams.opacity < 1.0
+        material.needsUpdate = true
+      } else {
+        outline.visible = false
+      }
+    })
+  }
+
+  /**
+   * 更新所有实线轮廓的样式
+   */
+  private updateAllSolidOutlines() {
+    this.allSolidOutlines.forEach(outlineGroup => {
+      if (this.solidLineParams.enabled) {
+        outlineGroup.visible = true
+
+        // 更新组内所有线条的材质
+        outlineGroup.children.forEach((child: THREE.Object3D) => {
+          if (child instanceof THREE.LineSegments) {
+            const material = child.material as THREE.LineBasicMaterial
+            material.color.setHex(this.solidLineParams.color)
+            material.opacity = this.solidLineParams.opacity
+            material.transparent = this.solidLineParams.opacity < 1.0
+            material.needsUpdate = true
+          }
+        })
+
+        // 如果线宽发生变化，需要重新创建线条
+        this.recreateSolidOutlineIfNeeded(outlineGroup)
+      } else {
+        outlineGroup.visible = false
+      }
+    })
+  }
+
+  /**
+   * 如果需要，重新创建实线轮廓（当线宽变化时）
+   */
+  private recreateSolidOutlineIfNeeded(outlineGroup: THREE.Group) {
+    const currentLineCount = outlineGroup.children.length
+    const targetLineCount = Math.max(1, Math.floor(this.solidLineParams.linewidth))
+
+    if (currentLineCount !== targetLineCount) {
+      // 线宽变化了，需要重新创建
+      // 这里可以实现更复杂的逻辑，暂时保持简单
+      // 实际应用中可能需要重新生成整个轮廓
+    }
+  }
+
+  /**
+   * 销毁GUI
+   */
+  destroyGUI() {
+    if (this.gui) {
+      this.gui.destroy()
+      this.gui = null
+    }
   }
 }
