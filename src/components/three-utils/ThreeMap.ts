@@ -164,7 +164,25 @@ export class THREEMAP extends THREE.Group {
       opacity = this.dashedLineParams.opacity,
     } = options
 
-    const edgesGeometry = new THREE.EdgesGeometry(geometry)
+    const fullEdgesGeometry = new THREE.EdgesGeometry(geometry)
+
+    const positions = fullEdgesGeometry.attributes.position.array as Float32Array
+    const filtered: number[] = []
+
+    for (let i = 0; i < positions.length; i += 6) {
+      const z1 = positions[i + 2]
+      const z2 = positions[i + 5]
+      if (Math.abs(z1 - z2) < 1e-6) {
+        filtered.push(
+          positions[i], positions[i + 1], positions[i + 2],
+          positions[i + 3], positions[i + 4], positions[i + 5]
+        )
+      }
+    }
+
+    const edgesGeometry = new THREE.BufferGeometry()
+    edgesGeometry.setAttribute('position', new THREE.Float32BufferAttribute(filtered, 3))
+
     const dashedLineMaterial = new THREE.LineDashedMaterial({
       color,
       linewidth,
