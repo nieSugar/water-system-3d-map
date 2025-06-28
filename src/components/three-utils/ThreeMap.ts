@@ -264,15 +264,8 @@ export class THREEMAP extends THREE.Group {
     const { geometry } = this.createArea(geojson.geometry.coordinates)
     geometry.name = name + '-geometry'
 
-    // 根据区域名称决定使用实线还是虚线轮廓
-    let outLine: THREE.LineSegments
-    if (name === '法库县') {
-      // 法库县使用实线轮廓（使用GUI参数）
-      outLine = this.createSolidOutline(geometry, name)
-    } else {
-      // 其他区域使用虚线轮廓
-      outLine = this.createDashedOutline(geometry, name)
-    }
+    // 默认为虚线轮廓，后续可在外部叠加实线实现整体边界效果
+    const outLine: THREE.LineSegments = this.createDashedOutline(geometry, name)
 
     const material = new THREE.MeshLambertMaterial()
     material.map = this.texture
@@ -345,14 +338,7 @@ export class THREEMAP extends THREE.Group {
         geometry.name = name + (i + 1) + '-geometry'
 
         // 根据区域名称决定使用实线还是虚线轮廓
-        let outLine: THREE.LineSegments
-        if (name === '法库县') {
-          // 法库县使用实线轮廓（使用GUI参数）
-          outLine = this.createSolidOutline(geometry, name + (i + 1))
-        } else {
-          // 其他区域使用虚线轮廓
-          outLine = this.createDashedOutline(geometry, name + (i + 1))
-        }
+        const outLine: THREE.LineSegments = this.createDashedOutline(geometry, name + (i + 1))
 
         const mesh = new THREE.Mesh(geometry, material)
         mesh.castShadow = true;
