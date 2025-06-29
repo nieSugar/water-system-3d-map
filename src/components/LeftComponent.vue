@@ -13,6 +13,8 @@ import TodayCallTraffic from "./TodayCallTraffic.vue";
 
 import WaterOutageNotice from "./WaterOutageNotice.vue";
 
+import axios from '../utils/request';
+
 const centerDialogVisible = ref(false);
 
 onMounted(async () => {
@@ -74,7 +76,7 @@ const lookMore = () => {
     <!-- 背景图片1 -->
     <div class="flex flex-row ml-[1.67vh] w-[24vm] mt-[1.5vh] relative">
       <img src="../assets/bj(1).png" class="w-full h-[13.5vh]" />
-      <img src="../assets/坐席.png" class="w-[2.3vw] h-[6.3vh] absolute top-[0.5vh] left-[1vw]" />
+      <img src="../assets/坐席.png" class="w-[2.5vw] h-[6.3vh] absolute top-[0.5vh] left-[1vw]" />
       <div class="absolute top-[1vh] left-[6vh] w-[4vw] flex flex-col justify-center items-center">
         <div class="flex flex-row">
           <p class="text-[#99DFFF] text-[1.2vw]">122</p>
@@ -84,7 +86,7 @@ const lookMore = () => {
         </div>
         <p class="text-[#BFDCFF] text-[0.5vw]">通话坐席数</p>
       </div>
-      <img src="../assets/示忙.png" class="w-[2.3vw] h-[6.3vh] absolute top-[7vh] left-[1vw]" />
+      <img src="../assets/示忙.png" class="w-[2.5vw] h-[6.3vh] absolute top-[7vh] left-[1vw]" />
       <div class="absolute top-[8vh] left-[6vh] w-[4vw] flex flex-col justify-center items-center">
         <div class="flex flex-row">
           <p class="text-[#99DFFF] text-[1.2vw]">122</p>
@@ -95,7 +97,7 @@ const lookMore = () => {
         <p class="text-[#BFDCFF] text-[0.5vw]">通话坐席数</p>
       </div>
 
-      <img src="../assets/离线.png" class="w-[2.3vw] h-[6.3vh] absolute top-[7vh] left-[21vw]" />
+      <img src="../assets/离线.png" class="w-[2.5vw] h-[6.3vh] absolute top-[7vh] left-[21vw]" />
       <div class="absolute top-[8vh] left-[17vw] w-[4vw] flex flex-col justify-center items-center">
         <div class="flex flex-row">
           <p class="text-[#99DFFF] text-[1.2vw]">122</p>
@@ -106,7 +108,7 @@ const lookMore = () => {
         <p class="text-[#BFDCFF] text-[0.5vw]">通话坐席数</p>
       </div>
 
-      <img src="../assets/示闲.png" class="w-[2.3vw] h-[6.3vh] absolute top-[0.5vh] left-[21vw]" />
+      <img src="../assets/示闲.png" class="w-[2.5vw] h-[6.3vh] absolute top-[0.5vh] left-[21vw]" />
       <div class="absolute top-[1vh] left-[17vw] w-[4vw] flex flex-col justify-center items-center">
         <div class="flex flex-row">
           <p class="text-[#99DFFF] text-[1.2vw]">122</p>
@@ -132,7 +134,7 @@ const lookMore = () => {
       </div>
     </div>
     <!-- 今日话务 -->
-    <TodayCallTraffic />
+    <TodayCallTraffic @show-modal="centerDialogVisible = true" />
     <!-- 停水公告 -->
     <WaterOutageNotice />
   </div>

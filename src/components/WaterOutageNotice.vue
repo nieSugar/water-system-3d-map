@@ -80,5 +80,3 @@ const handleCardClick = (index) => {
         </div>
     </div>
 </template>
-
-<style></style>

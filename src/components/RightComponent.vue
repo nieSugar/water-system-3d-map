@@ -20,6 +20,8 @@ import Pie3D from "./Pie3D.vue";
 
 import EChartComponent from './EChartComponent.vue'
 
+import ProgressBar from "./PrograssBar.vue";
+
 const format = (percentage) => (percentage === 100 ? "Full" : `${percentage}%`); 
 </script>
 <template>
@@ -38,7 +40,7 @@ const format = (percentage) => (percentage === 100 ? "Full" : `${percentage}%`);
       backgroundPosition: 'center center',
       backgroundSize: '100% 100%',
     }">
-      <div class="w-full h-full flex flex-row justify-between">
+      <!-- <div class="w-full h-full flex flex-row justify-between">
         <div class="flex flex-col justify-center">
           <EChartComponent />
         </div>
@@ -48,7 +50,7 @@ const format = (percentage) => (percentage === 100 ? "Full" : `${percentage}%`);
         <div class="flex flex-col justify-center">
           <EChartComponent />
         </div>
-      </div>
+      </div> -->
 
     </div>
     <div class="flex flex-row ml-[1.67vh] mt-[0.5vh]">
@@ -332,34 +334,13 @@ const format = (percentage) => (percentage === 100 ? "Full" : `${percentage}%`);
         </el-button>
       </div>
     </div>
-    <div class="demo-progress">
-      <el-progress :percentage="50" class="h-[3.4vh] gradient-progress default-gradient" />
-      <el-progress :percentage="100" :format="format" class="h-[3.4vh] gradient-progress default-gradient" />
-      <el-progress :percentage="100" status="success" class="h-[3.4vh] gradient-progress success-gradient" />
-      <el-progress :percentage="100" status="warning" class="h-[3.4vh] gradient-progress warning-gradient" />
-      <el-progress :percentage="50" status="exception" class="h-[3.4vh] gradient-progress exception-gradient" />
+    <div class="flex flex-col mr-[0.83vh]">
+      <ProgressBar label="皇姑" :percentage="98.5" />
+      <ProgressBar label="铁西" :percentage="95.9" />
+      <ProgressBar label="沈河" :percentage="93.5" />
+      <ProgressBar label="浑南" :percentage="93.5" />
     </div>
   </div>
 </template>
 
-<style scoped>
-.gradient-progress :deep(.el-progress-bar__inner) {
-  background-image: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
-}
-
-.gradient-progress.default-gradient :deep(.el-progress-bar__inner) {
-  background-image: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
-}
-
-.gradient-progress.success-gradient :deep(.el-progress-bar__inner) {
-  background-image: linear-gradient(to right, #2af598 0%, #009efd 100%);
-}
-
-.gradient-progress.warning-gradient :deep(.el-progress-bar__inner) {
-  background-image: linear-gradient(to right, #fbd72b 0%, #f9484a 100%);
-}
-
-.gradient-progress.exception-gradient :deep(.el-progress-bar__inner) {
-  background-image: linear-gradient(to right, #ff0844 0%, #ffb199 100%);
-}
-</style>
+<style scoped></style>

@@ -30,7 +30,7 @@
       <div class="flex items-center space-x-2">
         <span class="text-sm font-medium text-[#6C9CE3]">每页条数</span>
         <select v-model="pageSize"
-          class="w-[0.1vw] h-[0.1vw] rounded text-[#6C9CE3] border border-gray-600 focus:outline-none focus:border-blue-500"
+          class="w-[2vw] h-[1vw] rounded text-[#6C9CE3] border border-gray-600 focus:outline-none focus:border-blue-500 hover:cursor-pointer blue-select"
           @change="onPageSizeChange">
           <option v-for="size in [5, 10, 20, 30, 40, 50]" :key="size" :value="size">
             {{ size }}
@@ -40,11 +40,12 @@
 
       <!-- 跳页 -->
       <div class="flex items-center text-sm font-medium space-x-1 text-[#6C9CE3]">
-        <span>第</span>
+        <span>跳至</span>
         <input v-model="inputValue" type="text"
           class="w-[60px] h-8 px-2 rounded text-[#6C9CE3] border border-gray-600 focus:outline-none focus:border-blue-500"
           @keydown.enter="onPressEnter" />
-        <span>页 / {{ pageCount }}</span>
+        <!-- <span>页 / {{ pageCount }}</span> -->
+         <span>页</span>
       </div>
     </div>
   </div>
@@ -164,3 +165,13 @@ const onPageSizeChange = (event: Event) => {
   emit("update:currentPage", 1);
 };
 </script>
+
+<style scoped>
+.blue-select {
+  background: #0b1b44;
+}
+.blue-select option {
+  background: #0b1b44;
+  color: #6C9CE3;
+}
+</style>

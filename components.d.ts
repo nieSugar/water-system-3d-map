@@ -25,6 +25,7 @@ declare module 'vue' {
     LeftComponent: typeof import('./src/components/LeftComponent.vue')['default']
     MidComponent: typeof import('./src/components/MidComponent.vue')['default']
     Pie3D: typeof import('./src/components/Pie3D.vue')['default']
+    PrograssBar: typeof import('./src/components/PrograssBar.vue')['default']
     RightComponent: typeof import('./src/components/RightComponent.vue')['default']
     SatisfactionDialog: typeof import('./src/components/SatisfactionDialog.vue')['default']
     TablePagination: typeof import('./src/components/modal/TablePagination.vue')['default']
