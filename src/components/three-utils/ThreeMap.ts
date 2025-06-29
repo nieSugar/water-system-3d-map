@@ -104,6 +104,8 @@ export class THREEMAP extends THREE.Group {
 
     // 创建组材质
     const material = new THREE.MeshLambertMaterial()
+    // 启用顶点颜色，方便给挤出体刷渐变色
+    material.vertexColors = true
     material.map = this.texture
 
     // 取组默认颜色，没有则白色
@@ -381,6 +383,10 @@ export class THREEMAP extends THREE.Group {
     const outLine: THREE.LineSegments = this.createDashedOutline(geometry, name)
 
     const material = this.getRegionMaterial(name)
+
+    // --- 给几何体刷上沿 Z 方向的渐变颜色 --- //
+    this.applyZGradient(geometry, material.color, (geometry as any).parameters?.depth ?? 30)
+
     const mesh = new THREE.Mesh(geometry, material)
     mesh.name = name
     mesh.castShadow = true
@@ -408,6 +414,9 @@ export class THREEMAP extends THREE.Group {
 
         // 根据区域名称决定使用实线还是虚线轮廓
         const outLine: THREE.LineSegments = this.createDashedOutline(geometry, name + (i + 1))
+
+        // 给几何体刷上渐变色
+        this.applyZGradient(geometry, material.color, (geometry as any).parameters?.depth ?? 30)
 
         const mesh = new THREE.Mesh(geometry, material)
         mesh.name = name
@@ -575,6 +584,7 @@ export class THREEMAP extends THREE.Group {
         }
       })
     })
+
     globalFolder.open()
 
     // 默认展开样式面板
@@ -652,6 +662,29 @@ export class THREEMAP extends THREE.Group {
       this.gui.destroy()
       this.gui = null
     }
+  }
+
+  // --- 给几何体刷上沿 Z 方向的渐变颜色 --- //
+  private applyZGradient(geometry: THREE.BufferGeometry, color: THREE.Color, depth: number) {
+    const positions = geometry.attributes.position.array as Float32Array
+
+    let colors: Float32Array
+    if (geometry.getAttribute('color')) {
+      colors = geometry.getAttribute('color').array as Float32Array
+    } else {
+      colors = new Float32Array(positions.length)
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+    }
+
+    for (let i = 0; i < positions.length; i += 3) {
+      const z = positions[i + 2]
+      const t = z / depth // 0 底部 -> 1 顶部
+      colors[i] = color.r * t + 0.5 * (1 - t)
+      colors[i + 1] = color.g * t + 0.5 * (1 - t)
+      colors[i + 2] = color.b * t + 0.5 * (1 - t)
+    }
+
+    geometry.attributes.color.needsUpdate = true
   }
 }
 
