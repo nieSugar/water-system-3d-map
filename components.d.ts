@@ -11,8 +11,6 @@ declare module 'vue' {
     CallTrafficModal: typeof import('./src/components/modal/CallTrafficModal.vue')['default']
     CustomModal: typeof import('./src/components/modal/CustomModal.vue')['default']
     EChartComponent: typeof import('./src/components/EChartComponent.vue')['default']
-    ElButton: typeof import('element-plus/es')['ElButton']
-    ElProgress: typeof import('element-plus/es')['ElProgress']
     LeftComponent: typeof import('./src/components/LeftComponent.vue')['default']
     MidComponent: typeof import('./src/components/MidComponent.vue')['default']
     Pie3D: typeof import('./src/components/Pie3D.vue')['default']

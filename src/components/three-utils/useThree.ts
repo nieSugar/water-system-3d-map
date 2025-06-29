@@ -4,6 +4,9 @@
  */
 
 import { CSS2DRenderer, CSS3DRenderer, OrbitControls } from 'three/examples/jsm/Addons.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import * as THREE from 'three';
 import { onMounted, onBeforeUnmount, type Ref } from 'vue';
 
@@ -16,9 +19,10 @@ import { onMounted, onBeforeUnmount, type Ref } from 'vue';
  * @param params.light - 是否添加环境光照
  * @param params.css2d - 是否启用 CSS2D 渲染器（HTML 标签叠加）
  * @param params.css3d - 是否启用 CSS3D 渲染器（3D HTML 元素）
+ * @param params.bloom - 是否启用 Bloom 效果
  * @returns 返回 Three.js 核心对象：renderer, scene, camera, controler, setAnimation
  */
-export const useThree = (threeDOM: Ref<HTMLElement>, params?: { controls?: boolean, light?: boolean, css2d?: boolean, css3d?: boolean }) => {
+export const useThree = (threeDOM: Ref<HTMLElement>, params?: { controls?: boolean, light?: boolean, css2d?: boolean, css3d?: boolean, bloom?: boolean }) => {
 
   // 创建 WebGL 渲染器
   const renderer = new THREE.WebGLRenderer({
@@ -54,6 +58,10 @@ export const useThree = (threeDOM: Ref<HTMLElement>, params?: { controls?: boole
     css3drenderer = new CSS3DRenderer()
     css3drenderer.domElement.className = 'css3d'
   }
+
+  // 后处理：Bloom
+  let composer: EffectComposer | null = null
+  let bloomPass: UnrealBloomPass | null = null
 
   // 根据参数配置启用轨道控制器
   if (params?.controls) {
@@ -95,7 +103,11 @@ export const useThree = (threeDOM: Ref<HTMLElement>, params?: { controls?: boole
     controler && controler.update()   // 更新轨道控制器
 
     // 渲染各个层级
-    renderer.render(scene, camera)                        // 渲染主3D场景
+    if (composer) {
+      composer.render()
+    } else {
+      renderer.render(scene, camera)
+    }
     css2drenderer && css2drenderer.render(scene, camera)  // 渲染CSS2D标签层
     css3drenderer && css3drenderer.render(scene, camera)  // 渲染CSS3D元素层
 
@@ -120,6 +132,17 @@ export const useThree = (threeDOM: Ref<HTMLElement>, params?: { controls?: boole
 
     // 设置渲染器尺寸为容器尺寸
     renderer.setSize(canvas.offsetWidth, canvas.offsetHeight)
+
+    // Bloom Composer
+    if (params?.bloom) {
+      composer = new EffectComposer(renderer)
+      composer.setSize(canvas.offsetWidth, canvas.offsetHeight)
+
+      const renderPass = new RenderPass(scene, camera)
+      bloomPass = new UnrealBloomPass(new THREE.Vector2(canvas.offsetWidth, canvas.offsetHeight), 1.0, 0.4, 0.85)
+      composer.addPass(renderPass)
+      composer.addPass(bloomPass)
+    }
 
     // 配置 CSS2D 渲染器
     css2drenderer && css2drenderer.setSize(canvas.offsetWidth, canvas.offsetHeight)
@@ -188,7 +211,9 @@ export const useThree = (threeDOM: Ref<HTMLElement>, params?: { controls?: boole
       camera.updateProjectionMatrix()
     })
     renderer.dispose()
+    // EffectComposer 没有官方 dispose，直接置空即可
+    composer = null
   })
 
-  return { renderer, scene, camera, controler, setAnimation };
+  return { renderer, scene, camera, controler, setAnimation, bloomPass };
 }
