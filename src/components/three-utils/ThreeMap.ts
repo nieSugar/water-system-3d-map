@@ -38,10 +38,10 @@ export class THREEMAP extends THREE.Group {
   private gui: GUI | null = null
   private dashedLineParams = {
     color: 0xffffff,
-    linewidth: 0.1,
-    scale: 0.1,
+    linewidth: 4,
+    scale: 5,
     dashSize: 3,
-    gapSize: 15,
+    gapSize: 20,
     opacity: 1,
     enabled: true
   }
@@ -53,6 +53,94 @@ export class THREEMAP extends THREE.Group {
   }
   private allOutlines: THREE.LineSegments[] = []  // 存储所有虚线轮廓对象
   private allSolidOutlines: THREE.Group[] = []  // 存储所有实线轮廓对象
+
+  // 为每个行政区缓存一个专属 material，保证同一区域的多个 mesh 复用同一个材质
+  private regionMaterials: Record<string, THREE.MeshLambertMaterial> = {}
+
+  // ------------------- 分组定义 ------------------- //
+  private regionToGroup: Record<string, string> = {
+    '康平县': 'group1',
+    '法库县': 'group1',
+    '新民市': 'group2',
+    '辽中区': 'group2',
+    '于洪区': 'group3',
+    '沈北新区': 'group3',
+    '大东区': 'group3',
+    '和平区': 'group3',
+    '苏家屯区': 'group3',
+    '浑南区': 'group3',
+    '沈河区': 'group3',
+    '皇姑区': 'group3',
+    '铁西区': 'group3'
+  }
+
+  // 分组对应默认颜色
+  private groupColors: Record<string, number> = {
+    group1: 0xf77878, // 红色
+    group2: 0xebc547, // 黄色
+    group3: 0x3899df  // 蓝色
+  }
+
+  // 每个分组共用一份材质
+  private groupMaterials: Record<string, THREE.MeshLambertMaterial> = {}
+
+  // 纹理与区域色混合比（0=纯色，1=纯纹理）
+  private textureMixRatio = 0
+
+  /**
+   * 获取（或创建）指定行政区的材质
+   */
+  private getRegionMaterial(name: string): THREE.MeshLambertMaterial {
+    if (this.regionMaterials[name]) return this.regionMaterials[name]
+
+    // 先找到对应组
+    const group = this.regionToGroup[name] || name // 若未定义分组，则独立为自己
+
+    // 如果该组已有共用材质直接复用
+    if (this.groupMaterials[group]) {
+      this.regionMaterials[name] = this.groupMaterials[group]
+      return this.groupMaterials[group]
+    }
+
+    // 创建组材质
+    const material = new THREE.MeshLambertMaterial()
+    material.map = this.texture
+
+    // 取组默认颜色，没有则白色
+    const colorHex = this.groupColors[group] ?? 0xffffff
+    material.color.setHex(colorHex)
+
+    // 默认 100% 不透明，避免透视时看到下方轮廓
+    material.opacity = 1
+    material.transparent = false
+
+    // 自定义 shader，同之前逻辑
+    material.onBeforeCompile = (shader) => {
+      shader.uniforms.uMix = { value: this.textureMixRatio }
+
+      shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `#ifdef USE_MAP
+        vec4 sampledDiffuseColor = texture2D( map, vMapUv );
+        diffuseColor = mix(diffuseColor, sampledDiffuseColor, uMix);
+#endif
+        if(myBorder.y!=0.){
+              diffuseColor = vec4(1.,1.,1.,1.);
+        }`).replace('uniform vec3 diffuse;', `uniform vec3 diffuse;
+        uniform float uMix;
+        varying vec3 myBorder;`)
+
+      shader.vertexShader = shader.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
+             vec2 uv = position.xy-vec2(${this.minX},${this.minY});
+             vec2 size = vec2(${this.size.x},${this.size.y});
+             myBorder= normal;
+             vMapUv = vec2(uv.x/size.x,uv.y/size.y);`).replace('#include <common>', `#include <common>
+             varying vec3 myBorder;`)
+    }
+
+    // 缓存
+    this.groupMaterials[group] = material
+    this.regionMaterials[name] = material
+    return material
+  }
 
   /**
    * 构造函数
@@ -167,12 +255,19 @@ export class THREEMAP extends THREE.Group {
     const fullEdgesGeometry = new THREE.EdgesGeometry(geometry)
 
     const positions = fullEdgesGeometry.attributes.position.array as Float32Array
+
+    // 计算几何体的最高 Z 值（挤出深度），仅保留顶面的水平边
+    geometry.computeBoundingBox()
+    const maxZ = geometry.boundingBox!.max.z
+    const tol = 1e-6
+
     const filtered: number[] = []
 
     for (let i = 0; i < positions.length; i += 6) {
       const z1 = positions[i + 2]
       const z2 = positions[i + 5]
-      if (Math.abs(z1 - z2) < 1e-6) {
+      // 只保留水平边，并且位于挤出顶部
+      if (Math.abs(z1 - z2) < tol && Math.abs(z1 - maxZ) < tol) {
         filtered.push(
           positions[i], positions[i + 1], positions[i + 2],
           positions[i + 3], positions[i + 4], positions[i + 5]
@@ -285,33 +380,11 @@ export class THREEMAP extends THREE.Group {
     // 默认为虚线轮廓，后续可在外部叠加实线实现整体边界效果
     const outLine: THREE.LineSegments = this.createDashedOutline(geometry, name)
 
-    const material = new THREE.MeshLambertMaterial()
-    material.map = this.texture
-    material.onBeforeCompile = (shader) => {
-      shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `#ifdef USE_MAP
-      	vec4 sampledDiffuseColor = texture2D( map, vMapUv );
-      	diffuseColor =(diffuseColor*.3)+ sampledDiffuseColor*.7;
-        #endif
-        if(myBorder.y!=0.){
-              diffuseColor=vec4(1.,1.,1.,1.);
-        }`).replace('uniform vec3 diffuse;', `uniform vec3 diffuse;
-        varying vec3 myBorder;`)
-      shader.vertexShader = shader.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
-             vec2 uv = position.xy-vec2(${this.minX},${this.minY});
-             vec2 size = vec2(${this.size.x},${this.size.y});
-             myBorder= normal;
-             vMapUv = vec2(uv.x/size.x,uv.y/size.y);`).replace('#include <common>', `#include <common>
-             varying vec3 myBorder;`)
-    }
+    const material = this.getRegionMaterial(name)
     const mesh = new THREE.Mesh(geometry, material)
     mesh.name = name
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    if (Object.keys(this.series).indexOf(name) !== -1) {
-      material.color.setHex(this.series[name])
-    } else {
-      material.color.setHex(Math.floor(0xffffff))
-    }
+    mesh.castShadow = true
+    mesh.receiveShadow = true
 
     // 添加网格和虚线轮廓到场景
     this.add(mesh)
@@ -326,30 +399,8 @@ export class THREEMAP extends THREE.Group {
     const name = geojson.properties.name || geojson.properties.NAME
     const group = new THREE.Group()
     group.name = name
-    const material = new THREE.MeshBasicMaterial()
-    if (Object.keys(this.series).indexOf(name) !== -1) {
-      material.color.setHex(this.series[name])
-    } else {
-      material.color.setHex(Math.floor(0xffffff))
-    }
-    material.map = this.texture
-    material.onBeforeCompile = (shader) => {
-      shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `#ifdef USE_MAP
-      	vec4 sampledDiffuseColor = texture2D( map, vMapUv );
-      	diffuseColor =(diffuseColor*.3)+ sampledDiffuseColor*.7;
-        #endif
-        if(myBorder.y!=0.){
-              diffuseColor=vec4(0.047,0.749,0.988,1.);
-        }`).replace('uniform vec3 diffuse;', `uniform vec3 diffuse;
-        varying vec3 myBorder;`)
-      shader.vertexShader = shader.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
-             vec2 uv = position.xy-vec2(${this.minX},${this.minY});
-             vec2 size = vec2(${this.size.x},${this.size.y});
-             myBorder= normal;
-             vMapUv = vec2(uv.x/size.x,uv.y/size.y);`).replace('#include <common>', `#include <common>
-            varying vec3 myBorder;`)
 
-    }
+    const material = this.getRegionMaterial(name)
     for (let i = 0; i < geojson.geometry.coordinates.length; i++) {
       geojson.geometry.coordinates.forEach((coordinates: [number, number][][]) => {
         const { geometry } = this.createArea(coordinates)
@@ -359,9 +410,9 @@ export class THREEMAP extends THREE.Group {
         const outLine: THREE.LineSegments = this.createDashedOutline(geometry, name + (i + 1))
 
         const mesh = new THREE.Mesh(geometry, material)
+        mesh.name = name
         mesh.castShadow = true;
         mesh.receiveShadow = true;
-
         // 添加网格和虚线轮廓到组
         group.add(mesh)
         group.add(outLine)
@@ -477,6 +528,57 @@ export class THREEMAP extends THREE.Group {
     dashedFolder.open()
     // 默认展开实线面板
     solidFolder.open()
+
+    // ----------------------------- 颜色控制面板 ----------------------------- //
+    const styleFolder = this.gui.addFolder('组样式')
+
+    Object.keys(this.groupMaterials).forEach(groupName => {
+      const mat = this.groupMaterials[groupName]
+
+      const grpFolder = styleFolder.addFolder(groupName)
+
+      // 颜色控制
+      const colorParam = { value: `#${mat.color.getHexString()}` }
+      grpFolder.addColor(colorParam, 'value').name('颜色').onChange((val: any) => {
+        const hex = typeof val === 'string' ? parseInt(val.replace('#', '0x'), 16) : val
+        mat.color.setHex(hex)
+        mat.needsUpdate = true
+      })
+
+      // 透明度控制
+      const opacityParam = { value: mat.opacity }
+      grpFolder.add(opacityParam, 'value', 0, 1, 0.01).name('透明度').onChange((val: number) => {
+        mat.opacity = val
+        mat.transparent = val < 1
+        mat.needsUpdate = true
+      })
+
+      grpFolder.open()
+    })
+
+    // 全局纹理混合控制
+    const globalFolder = this.gui.addFolder('全局')
+    const mixParam = { value: this.textureMixRatio }
+    globalFolder.add(mixParam, 'value', 0, 1, 0.01).name('纹理混合').onChange((val: number) => {
+      this.textureMixRatio = val
+      // 更新所有材质的 uniform
+      Object.values(this.groupMaterials).forEach(mat => {
+        const uniforms = (mat as any).userData?.uniforms ?? (mat as any).__shader?.uniforms ?? undefined
+      })
+      // safer: traverse materials and set uniform if present
+      this.traverse(obj => {
+        if (obj instanceof THREE.Mesh) {
+          const mtl = obj.material as any
+          if (mtl && mtl.uniforms && mtl.uniforms.uMix) {
+            mtl.uniforms.uMix.value = val
+          }
+        }
+      })
+    })
+    globalFolder.open()
+
+    // 默认展开样式面板
+    styleFolder.open()
   }
 
   /**
@@ -552,3 +654,4 @@ export class THREEMAP extends THREE.Group {
     }
   }
 }
+

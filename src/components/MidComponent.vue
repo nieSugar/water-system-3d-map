@@ -75,15 +75,15 @@ onMounted(() => {
         { name: '新民市', color: 0xf7d358 },
         { name: '辽中区', color: 0xf7d358 },
 
-        { name: '于洪区',   color: 0x5dade2 },
+        { name: '于洪区', color: 0x5dade2 },
         { name: '沈北新区', color: 0x5dade2 },
-        { name: '大东区',   color: 0x5dade2 },
-        { name: '和平区',   color: 0x5dade2 },
+        { name: '大东区', color: 0x5dade2 },
+        { name: '和平区', color: 0x5dade2 },
         { name: '苏家屯区', color: 0x5dade2 },
-        { name: '浑南区',   color: 0x5dade2 },
-        { name: '沈河区',     color: 0x5dade2 },
-        { name: '皇姑区',   color: 0x5dade2 },
-        { name: '铁西区',   color: 0x5dade2 }
+        { name: '浑南区', color: 0x5dade2 },
+        { name: '沈河区', color: 0x5dade2 },
+        { name: '皇姑区', color: 0x5dade2 },
+        { name: '铁西区', color: 0x5dade2 }
       ]
 
       map = new THREEMAP(shenyang, colors, {
