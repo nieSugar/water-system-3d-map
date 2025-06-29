@@ -65,26 +65,28 @@ onMounted(() => {
   fetch('/shengyang.json')
     .then(res => res.json())
     .then(shenyang => {
-      // 创建3D地图对象，传入地理数据和区域配色方案
-      // 使用更鲜艳的颜色和渐变效果
-      map = new THREEMAP(shenyang,
-        [
-          // 主城区 - 使用蓝色系 (0x5dade2)
-          { 'name': '于洪区', 'color': 0x5dade2 },
-          { 'name': '沈抚新城', 'color': 0x5dade2 },
-          { 'name': '大东区', 'color': 0x5dade2 },
-          { 'name': '和平区', 'color': 0x5dade2 },
-          { 'name': '苏家屯区', 'color': 0x5dade2 },
-          { 'name': '浑南区', 'color': 0x5dade2 },
-          { 'name': '沈河', 'color': 0x5dade2 },
-          { 'name': '新民市', 'color': 0x5dade2 },
-          { 'name': '辽中区', 'color': 0x5dade2 },
-          { 'name': '皇姑区', 'color': 0x5dade2 },
-          { 'name': '铁西区', 'color': 0x5dade2 },
-          // 远郊县区 - 使用棕色系 (0xbd7463)
-          { 'name': '康平县', 'color': 0xbd7463 },
-          { 'name': '法库县', 'color': 0xbd7463 },
-        ], {
+      // group1 : 红色
+      // group2 : 黄色
+      // group3 : 蓝色
+      const colors = [
+        { name: '康平县', color: 0xff0000 },
+        { name: '法库县', color: 0xff0000 },
+
+        { name: '新民市', color: 0xf7d358 },
+        { name: '辽中区', color: 0xf7d358 },
+
+        { name: '于洪区',   color: 0x5dade2 },
+        { name: '沈北新区', color: 0x5dade2 },
+        { name: '大东区',   color: 0x5dade2 },
+        { name: '和平区',   color: 0x5dade2 },
+        { name: '苏家屯区', color: 0x5dade2 },
+        { name: '浑南区',   color: 0x5dade2 },
+        { name: '沈河区',     color: 0x5dade2 },
+        { name: '皇姑区',   color: 0x5dade2 },
+        { name: '铁西区',   color: 0x5dade2 }
+      ]
+
+      map = new THREEMAP(shenyang, colors, {
         // 地图配置参数
         scale: 13000,                           // 地图缩放比例
         center: [-123.406664, -41.788074],      // 地图中心点坐标（沈阳市中心）
