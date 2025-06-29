@@ -30,10 +30,11 @@ import maodian from '../assets/锚点 拷贝 15.png'
 const containerRef = ref<HTMLDivElement>() as Ref<HTMLDivElement>
 
 // 初始化Three.js场景，启用轨道控制器、光照和CSS2D渲染
-const { scene, renderer, camera } = useThree(containerRef, {
+const { scene, renderer, camera, bloomPass } = useThree(containerRef, {
   controls: true,  // 启用鼠标控制（缩放、旋转、平移）
   light: true,     // 启用环境光照
-  css2d: true      // 启用CSS2D渲染器，支持HTML标签叠加
+  css2d: true,     // 启用CSS2D渲染器，支持HTML标签叠加
+  bloom: true      // 开启 Bloom 泛光
 })
 
 // 设置相机位置，俯视角度观察地图
@@ -124,8 +125,8 @@ onMounted(() => {
       // 将完整的3D地图添加到场景中
       scene.add(map)
 
-      // 初始化GUI调试面板
-      map.initGUI()
+      // 初始化GUI调试面板，并传入 Bloom 控件
+      map.initGUI(bloomPass)
 
       // 为特定区域组合添加统一实线外边界，且保留内部虚线边界
       addClusterOutline(shenyang, ['康平县', '法库县'])

@@ -13,8 +13,6 @@ declare module 'vue' {
     CallVolumeModal: typeof import('./src/components/modal/CallVolumeModal.vue')['default']
     CustomModal: typeof import('./src/components/modal/CustomModal.vue')['default']
     EChartComponent: typeof import('./src/components/EChartComponent.vue')['default']
-    ElButton: typeof import('element-plus/es')['ElButton']
-    ElProgress: typeof import('element-plus/es')['ElProgress']
     LeftComponent: typeof import('./src/components/LeftComponent.vue')['default']
     MidComponent: typeof import('./src/components/MidComponent.vue')['default']
     NumberOfSeats: typeof import('./src/components/modal/NumberOfSeats.vue')['default']

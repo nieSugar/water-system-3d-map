@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import * as d3 from 'd3';
 import { GUI } from 'lil-gui';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
 /**
  * THREEMAP 类 - GeoJSON 转 3D 地图渲染器
@@ -39,7 +40,7 @@ export class THREEMAP extends THREE.Group {
   private dashedLineParams = {
     color: 0xffffff,
     linewidth: 4,
-    scale: 5,
+    scale: 2.5,
     dashSize: 3,
     gapSize: 20,
     opacity: 1,
@@ -87,6 +88,13 @@ export class THREEMAP extends THREE.Group {
   // 纹理与区域色混合比（0=纯色，1=纯纹理）
   private textureMixRatio = 0
 
+  // ------------------ Z 轴侧面颜色控制 ------------------ //
+  private zColorParams = {
+    // 侧面颜色
+    sideColor: 0x0ac2ff as number,
+    glow: 0.66 // 0-1 对应提升 1-4 倍亮度
+  }
+
   /**
    * 获取（或创建）指定行政区的材质
    */
@@ -113,7 +121,7 @@ export class THREEMAP extends THREE.Group {
     material.color.setHex(colorHex)
 
     // 默认 100% 不透明，避免透视时看到下方轮廓
-    material.opacity = 1
+    material.opacity = 0.95;
     material.transparent = false
 
     // 自定义 shader，同之前逻辑
@@ -465,7 +473,7 @@ export class THREEMAP extends THREE.Group {
   /**
    * 初始化GUI调试界面
    */
-  initGUI() {
+  initGUI(bloomPass?: UnrealBloomPass | null) {
     if (this.gui) {
       this.gui.destroy()
     }
@@ -587,8 +595,43 @@ export class THREEMAP extends THREE.Group {
 
     globalFolder.open()
 
+    // -------------------- Z 轴颜色  -------------------- //
+    const gradientFolder = this.gui.addFolder('Z 轴颜色')
+    const bottomColorParam = { value: `#${this.zColorParams.sideColor.toString(16).padStart(6, '0')}` }
+    gradientFolder.addColor(bottomColorParam, 'value').name('侧面颜色').onChange((val: any) => {
+      const hex = typeof val === 'string' ? parseInt(val.replace('#', '0x'), 16) : val
+      this.zColorParams.sideColor = hex
+      this.updateZGradientColors()
+    })
+
+    gradientFolder.add(this.zColorParams, 'glow', 0, 1, 0.01).name('亮度提升').onChange(() => {
+      this.updateZGradientColors()
+    })
+
+    gradientFolder.open()
+
     // 默认展开样式面板
     styleFolder.open()
+
+    // -------------------- Bloom 控制 -------------------- //
+    if (bloomPass) {
+      const bloomFolder = this.gui.addFolder('泛光')
+      const bloomParams = {
+        strength: bloomPass.strength,
+        threshold: bloomPass.threshold,
+        radius: bloomPass.radius
+      }
+      bloomFolder.add(bloomParams, 'strength', 0, 5, 0.01).name('强度').onChange((v: number) => {
+        bloomPass.strength = v
+      })
+      bloomFolder.add(bloomParams, 'threshold', 0, 1, 0.01).name('阈值').onChange((v: number) => {
+        bloomPass.threshold = v
+      })
+      bloomFolder.add(bloomParams, 'radius', 0, 2, 0.01).name('半径').onChange((v: number) => {
+        bloomPass.radius = v
+      })
+      bloomFolder.open()
+    }
   }
 
   /**
@@ -655,6 +698,27 @@ export class THREEMAP extends THREE.Group {
   }
 
   /**
+   * 当底部颜色发生变化时，重新刷一遍所有区域的 Z 轴渐变颜色
+   */
+  private updateZGradientColors() {
+    this.traverse(obj => {
+      if (obj instanceof THREE.Mesh && obj.geometry) {
+        const geo = obj.geometry as THREE.BufferGeometry
+        // 尝试从 Extrude 参数拿 depth，否则估算
+        let depth = (geo as any).parameters?.depth
+        if (depth === undefined) {
+          // 估算 z 方向范围
+          geo.computeBoundingBox()
+          const bb = geo.boundingBox
+          depth = bb ? bb.max.z - bb.min.z : 30
+        }
+        const mat = obj.material as THREE.MeshLambertMaterial
+        this.applyZGradient(geo, mat.color, depth)
+      }
+    })
+  }
+
+  /**
    * 销毁GUI
    */
   destroyGUI() {
@@ -665,7 +729,7 @@ export class THREEMAP extends THREE.Group {
   }
 
   // --- 给几何体刷上沿 Z 方向的渐变颜色 --- //
-  private applyZGradient(geometry: THREE.BufferGeometry, color: THREE.Color, depth: number) {
+  private applyZGradient(geometry: THREE.BufferGeometry, topColor: THREE.Color, depth: number) {
     const positions = geometry.attributes.position.array as Float32Array
 
     let colors: Float32Array
@@ -676,12 +740,19 @@ export class THREEMAP extends THREE.Group {
       geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     }
 
+    // 让侧面颜色更亮，Bloom 阈值高于 0.8，需要接近白色
+    const sideCol = new THREE.Color(this.zColorParams.sideColor).multiplyScalar(1 + this.zColorParams.glow * 3)
+    const normals = geometry.attributes.normal.array as Float32Array
+
     for (let i = 0; i < positions.length; i += 3) {
-      const z = positions[i + 2]
-      const t = z / depth // 0 底部 -> 1 顶部
-      colors[i] = color.r * t + 0.5 * (1 - t)
-      colors[i + 1] = color.g * t + 0.5 * (1 - t)
-      colors[i + 2] = color.b * t + 0.5 * (1 - t)
+      const nz = normals[i + 2]
+      const isSide = Math.abs(nz) < 0.7 // vertical faces z 分量≈0
+
+      const target = isSide ? sideCol : topColor
+
+      colors[i] = target.r
+      colors[i + 1] = target.g
+      colors[i + 2] = target.b
     }
 
     geometry.attributes.color.needsUpdate = true
