@@ -132,8 +132,9 @@ export class THREEMAP extends THREE.Group {
         vec4 sampledDiffuseColor = texture2D( map, vMapUv );
         diffuseColor = mix(diffuseColor, sampledDiffuseColor, uMix);
 #endif
-        if(myBorder.y!=0.){
-              diffuseColor = vec4(1.,1.,1.,1.);
+        // 丢弃挤出侧面（normal.y != 0 表示侧面）
+        if(abs(myBorder.y) > 1e-4){
+              discard;
         }`).replace('uniform vec3 diffuse;', `uniform vec3 diffuse;
         uniform float uMix;
         varying vec3 myBorder;`)
@@ -221,6 +222,10 @@ export class THREEMAP extends THREE.Group {
     } else {
       // console.log(mapData.type);
     }
+
+    // 创建最外层竖直墙体
+    this.createOuterWalls(30)
+
     this.rotateX(-Math.PI / 2)
     const box = new THREE.Box3().setFromObject(this)
     const center = box.getCenter(new THREE.Vector3())
@@ -339,8 +344,31 @@ export class THREEMAP extends THREE.Group {
     outlineGroup.name = name + '-solid-outline'
     outlineGroup.visible = this.solidLineParams.enabled
 
-    // 获取边缘几何体
-    const edgesGeometry = new THREE.EdgesGeometry(geometry)
+    // ---------------- 仅保留顶面水平边 ---------------- //
+    const fullEdgesGeometry = new THREE.EdgesGeometry(geometry)
+    const positions = fullEdgesGeometry.attributes.position.array as Float32Array
+
+    // 计算几何体的最高 Z 值（挤出深度），仅保留顶面的水平边
+    geometry.computeBoundingBox()
+    const maxZ = geometry.boundingBox!.max.z
+    const tol = 1e-6
+
+    const filtered: number[] = []
+
+    for (let i = 0; i < positions.length; i += 6) {
+      const z1 = positions[i + 2]
+      const z2 = positions[i + 5]
+      // 只保留水平边，并且位于挤出顶部
+      if (Math.abs(z1 - z2) < tol && Math.abs(z1 - maxZ) < tol) {
+        filtered.push(
+          positions[i], positions[i + 1], positions[i + 2],
+          positions[i + 3], positions[i + 4], positions[i + 5]
+        )
+      }
+    }
+
+    const edgesGeometry = new THREE.BufferGeometry()
+    edgesGeometry.setAttribute('position', new THREE.Float32BufferAttribute(filtered, 3))
 
     // 创建基础材质
     const solidLineMaterial = new THREE.LineBasicMaterial({
@@ -359,11 +387,11 @@ export class THREEMAP extends THREE.Group {
 
       // 为每条线添加微小的偏移
       if (i > 0) {
-        const positions = clonedGeometry.attributes.position.array
-        for (let j = 0; j < positions.length; j += 3) {
-          positions[j] += (Math.random() - 0.5) * offset     // x偏移
-          positions[j + 1] += (Math.random() - 0.5) * offset // y偏移
-          positions[j + 2] += (Math.random() - 0.5) * offset // z偏移
+        const pos = clonedGeometry.attributes.position.array as Float32Array
+        for (let j = 0; j < pos.length; j += 3) {
+          pos[j] += (Math.random() - 0.5) * offset // x偏移
+          pos[j + 1] += (Math.random() - 0.5) * offset // y偏移
+          pos[j + 2] += (Math.random() - 0.5) * offset // z偏移
         }
         clonedGeometry.attributes.position.needsUpdate = true
       }
@@ -471,6 +499,78 @@ export class THREEMAP extends THREE.Group {
   }
 
   /**
+   * 根据顶面唯一边生成外墙
+   * @param depth 挤出深度，需与 createArea 使用一致
+   */
+  private createOuterWalls(depth: number) {
+    // 收集所有顶面边出现次数
+    const edgeCount: Record<string, { v1: THREE.Vector3, v2: THREE.Vector3, count: number }> = {}
+
+    const keyOf = (a: THREE.Vector3, b: THREE.Vector3) => {
+      // 无向边 key
+      const k1 = `${a.x.toFixed(5)},${a.y.toFixed(5)},${a.z.toFixed(5)}`
+      const k2 = `${b.x.toFixed(5)},${b.y.toFixed(5)},${b.z.toFixed(5)}`
+      return k1 < k2 ? `${k1}|${k2}` : `${k2}|${k1}`
+    }
+
+    this.allOutlines.forEach(ls => {
+      const posArr = ls.geometry.attributes.position.array as Float32Array
+      for (let i = 0; i < posArr.length; i += 6) {
+        const v1 = new THREE.Vector3(posArr[i], posArr[i + 1], posArr[i + 2])
+        const v2 = new THREE.Vector3(posArr[i + 3], posArr[i + 4], posArr[i + 5])
+        const key = keyOf(v1, v2)
+        if (!edgeCount[key]) {
+          edgeCount[key] = { v1, v2, count: 1 }
+        } else {
+          edgeCount[key].count++
+        }
+      }
+    })
+
+    const vertices: number[] = []
+    const colors: number[] = []
+
+    const topColor = new THREE.Color(0xffffff)
+    const sideColor = new THREE.Color(this.zColorParams.sideColor).multiplyScalar(1 + this.zColorParams.glow * 3)
+
+    Object.values(edgeCount).forEach(({ v1, v2, count }) => {
+      if (count !== 1) return // 只要独立一次出现的边 -> 外边
+
+      const v1b = v1.clone(); v1b.z = v1.z - depth
+      const v2b = v2.clone(); v2b.z = v2.z - depth
+
+      // 三角 1 (v1, v2, v2b)
+      vertices.push(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v2b.x, v2b.y, v2b.z)
+      // 三角 2 (v1, v2b, v1b)
+      vertices.push(v1.x, v1.y, v1.z, v2b.x, v2b.y, v2b.z, v1b.x, v1b.y, v1b.z)
+
+      // 颜色渐变：顶部颜色为已有 topColor，侧面为 sideColor
+      for (let i = 0; i < 3; i++) {
+        colors.push(sideColor.r, sideColor.g, sideColor.b) // first triangle all side color
+      }
+      for (let i = 0; i < 3; i++) {
+        colors.push(sideColor.r, sideColor.g, sideColor.b)
+      }
+    })
+
+    if (vertices.length === 0) return
+
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
+    geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3))
+    geo.computeVertexNormals()
+
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: false, opacity: 0.95 })
+
+    const wallMesh = new THREE.Mesh(geo, mat)
+    wallMesh.name = 'outer-wall'
+    wallMesh.castShadow = true
+    wallMesh.receiveShadow = true
+
+    this.add(wallMesh)
+  }
+
+  /**
    * 初始化GUI调试界面
    */
   initGUI(bloomPass?: UnrealBloomPass | null) {
@@ -532,7 +632,7 @@ export class THREEMAP extends THREE.Group {
     })
 
     // 实线线宽控制
-    solidFolder.add(this.solidLineParams, 'linewidth', 0.1, 10, 0.1).name('线宽').onChange(() => {
+    solidFolder.add(this.solidLineParams, 'linewidth', 0, 10, 0.1).name('线宽').onChange(() => {
       this.updateAllSolidOutlines()
     })
 
