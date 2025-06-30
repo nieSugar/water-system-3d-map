@@ -9,13 +9,12 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     CallTrafficModal: typeof import('./src/components/modal/CallTrafficModal.vue')['default']
-    CallVolume: typeof import('./src/components/modal/CallVolume.vue')['default']
     CallVolumeModal: typeof import('./src/components/modal/CallVolumeModal.vue')['default']
     CustomModal: typeof import('./src/components/modal/CustomModal.vue')['default']
     EChartComponent: typeof import('./src/components/EChartComponent.vue')['default']
+    ElButton: typeof import('element-plus/es')['ElButton']
     LeftComponent: typeof import('./src/components/LeftComponent.vue')['default']
     MidComponent: typeof import('./src/components/MidComponent.vue')['default']
-    NumberOfSeats: typeof import('./src/components/modal/NumberOfSeats.vue')['default']
     NumberOfSeatsModal: typeof import('./src/components/modal/NumberOfSeatsModal.vue')['default']
     Pie3D: typeof import('./src/components/Pie3D.vue')['default']
     PrograssBar: typeof import('./src/components/PrograssBar.vue')['default']

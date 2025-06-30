@@ -9,8 +9,6 @@ import textureImg from "./assets/纹理.png";
 // @ts-ignore
 import MidComponent from "./components/MidComponent.vue";
 
-
-
 // 当前年月日
 const currentDate = ref("");
 // 当前时分
@@ -80,13 +78,64 @@ const format = (percentage: number) =>
       backgroundSize: '100% 100%',
     }"
   >
+    <!-- 头部区域 -->
+    <div class="w-[100vw] h-[10vh]">
+      <!-- 左上角时间、日期、星期 -->
+      <div
+        class="flex flex-row justify-center items-center absolute top-[0.1vh] left-[1.67vw]"
+      >
+        <div class="text-left flex flex-row">
+          <p
+            class="font-[YouSheBiaoTiHei] font-normal text-[2vw] text-white leading-normal"
+          >
+            {{ currentTime }}
+          </p>
+          <div class="flex justify-center items-center">
+            <div class="w-[1px] h-[2vh] bg-[#0DBCFC] mx-[0.4vw]"></div>
+          </div>
+          <div class="flex flex-col mt-[1vh]">
+            <p
+              class="font-[YouSheBiaoTiHei] font-normal text-[0.8vw] text-white leading-normal"
+            >
+              {{ currentWeekday }}
+            </p>
+            <p
+              class="font-[YouSheBiaoTiHei] font-normal text-[0.8vw] text-white leading-normal"
+            >
+              {{ currentDate }}
+            </p>
+          </div>
+        </div>
+      </div>
+      <!-- 标题 -->
+      <div
+        class="flex flex-row justify-center items-center absolute left-[50%] translate-x-[-50%]"
+      >
+        <p
+          class="w-[30vw] text-center font-[YouSheBiaoTiHei] font-normal text-[3.5vh] text-white leading-normal"
+        >
+          沈阳水务集团客服中心数字大屏
+        </p>
+      </div>
+      <!-- 右上角全屏按钮 -->
+      <div
+        class="flex flex-row justify-center items-center absolute top-[2vh] right-[1.5vw] hover:cursor-pointer"
+      >
+        <img src="./assets/全屏.png" alt="" class="w-[1.354vw] h-[1.354vw]" />
+        <p
+          class="ml-[0.3vw] text-center font-[YouSheBiaoTiHei] font-normal text-[0.8vw] text-white leading-normal"
+        >
+          全屏
+        </p>
+      </div>
+    </div>
     <!-- 主体区域 -->
     <div class="flex flex-row justify-between items-center">
-      <!-- <LeftComponent/> -->
-      <div class="w-[100vw] h-[100vh]">
+      <LeftComponent/>
+      <div class="w-[45vw] h-[90vh]">
         <MidComponent />
       </div>
-       <!-- <RightComponent/> -->
+       <RightComponent/>
     </div>
   </div>
 </template>

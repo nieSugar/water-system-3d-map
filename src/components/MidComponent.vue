@@ -5,7 +5,7 @@
 -->
 <template>
   <!-- 3D地图容器，作为Three.js渲染的挂载点 -->
-  <div ref="containerRef" class="rounded-lg shadow-lg" style="width: 100%;height: 100%;">
+  <div ref="containerRef" class="rounded-lg shadow-lg" style="width: 100%;height: 100%; background: transparent;">
 
   </div>
 </template>
@@ -30,11 +30,11 @@ import maodian from '../assets/锚点 拷贝 15.png'
 const containerRef = ref<HTMLDivElement>() as Ref<HTMLDivElement>
 
 // 初始化Three.js场景，启用轨道控制器、光照和CSS2D渲染
-const { scene, renderer, camera, bloomPass } = useThree(containerRef, {
+const { scene, renderer, camera } = useThree(containerRef, {
   controls: true,  // 启用鼠标控制（缩放、旋转、平移）
   light: true,     // 启用环境光照
   css2d: true,     // 启用CSS2D渲染器，支持HTML标签叠加
-  bloom: true      // 开启 Bloom 泛光
+  bloom: false     // 关闭 Bloom 泛光，保留透明背景
 })
 
 // 设置相机位置，俯视角度观察地图
@@ -51,8 +51,8 @@ scene.add(directionalLight);
 const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
 scene.add(ambientLight);
 
-// 设置场景背景色，类似图片中的深蓝色背景
-scene.background = new THREE.Color(0x0a1a2e);
+// 取消场景背景色，保持透明，避免绘制深色背景板
+scene.background = null;
 
 // 创建事件投射器，用于处理3D对象的鼠标交互
 const eventCaster = new EventCaster(camera, renderer.domElement)
@@ -125,8 +125,8 @@ onMounted(() => {
       // 将完整的3D地图添加到场景中
       scene.add(map)
 
-      // 初始化GUI调试面板，并传入 Bloom 控件
-      map.initGUI(bloomPass)
+      // 初始化GUI调试面板
+      map.initGUI()
 
       // 为特定区域组合添加统一实线外边界，且保留内部虚线边界
       addClusterOutline(shenyang, ['康平县', '法库县'])

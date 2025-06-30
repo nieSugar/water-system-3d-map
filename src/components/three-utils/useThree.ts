@@ -29,6 +29,9 @@ export const useThree = (threeDOM: Ref<HTMLElement>, params?: { controls?: boole
     alpha: true,      // 启用透明背景，便于与页面其他元素融合
     antialias: true,  // 启用抗锯齿，提升渲染质量
   });
+  // 使渲染器清屏颜色完全透明
+  renderer.setClearColor(0x000000, 0);
+  renderer.domElement.style.background = 'transparent';
   renderer.domElement.style.borderRadius = '30px'  // 设置圆角样式
   // renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 
@@ -37,6 +40,8 @@ export const useThree = (threeDOM: Ref<HTMLElement>, params?: { controls?: boole
 
   // 创建3D场景
   const scene = new THREE.Scene();
+  // 保持场景背景透明，方便与页面背景融合
+  scene.background = null;
 
   // 创建透视相机
   const camera = new THREE.PerspectiveCamera();
