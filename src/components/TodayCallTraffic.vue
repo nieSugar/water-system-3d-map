@@ -1,8 +1,7 @@
 <!-- 今日话务组件 -->
 
 <template>
-  <div>
-    <!-- 今日话务 -->
+  <div class="caret-transparent">
     <div class="flex flex-row items-center ml-[1.67vh] mt-[1.5vh]">
       <img :src="getImageUrl('组3047')" class="w-[1.04vw] h-[1.04vw]" />
       <div class="ml-[0.2vw]">
@@ -21,7 +20,8 @@
           'text-[0.7vw] absolute top-[0.9vh] left-[3vw]',
           selectedIndex === index ? 'text-[#E3AE3B]' : 'text-[#BFDCFF]'
         ]">{{ card.title }}</p>
-        <p class="text-[#89DAFF] text-[1.2vw] absolute top-[0.2vh] left-[10vw]">{{ card.titleNumber }}</p>
+        <p class="text-[#89DAFF] text-[1.2vw] absolute top-[0.2vh] left-[10vw]" @click="handleNumberClick(index)">{{
+          card.titleNumber }}</p>
         <p :class="[
           'text-[0.8vw] absolute top-[0.6vh] left-[14vw]',
           selectedIndex === index ? 'text-[#E3AE3B]' : 'text-[#BFDCFF]'
@@ -31,15 +31,18 @@
         ]">{{ card.number }}</p>
       </div>
     </div>
+    <CallVolumeModal v-model="showCallVolumeModal" />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from "vue";
 import axios from '../utils/request';
+import CallVolumeModal from "./modal/CallVolumeModal.vue";
 const emit = defineEmits(['show-modal']);
 
 const selectedIndex = ref(0);
+const showCallVolumeModal = ref(false);
 
 const cardData = ref([
   { icon: '来电数', title: '来点数/话务量', numberName: `环  比：`, titleNumber: '0', number: '0' },
@@ -54,7 +57,7 @@ onMounted(async () => {
   try {
     const response = await axios.get('/shenyang-report/screen/today-call');
     const data = response.data;
-    console.log(data,'data');
+    console.log(data, 'data');
     cardData.value[0].titleNumber = data.callInCount;
     cardData.value[0].number = data.callInCountDayToDay;
     cardData.value[1].titleNumber = data.callInAnswerCount;
@@ -76,10 +79,15 @@ const getImageUrl = (name) => {
 
 const handleCardClick = (index) => {
   selectedIndex.value = index;
+}
+
+const handleNumberClick = (index) => {
+  selectedIndex.value = index;
   if (index === 0) {
+    showCallVolumeModal.value = true;
+  }
+  if (index === 4) {
     emit('show-modal');
   }
 };
 </script>
-
-<style scoped></style>

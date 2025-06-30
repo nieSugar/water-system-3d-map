@@ -4,21 +4,24 @@
     <div class="flex flex-col h-full">
       <div class="h-[6vh] flex justify-center items-center relative">
         <img :src="huangling" alt="教堂" class="absolute left-[-1vw] top-0 w-[8vw] h-[2.5vw] ml-[1vw] mt-[1vh] z-10" />
-        <div class="text-center text-[0.8vw] text-white">今日-话务满意量</div>
+        <div class="text-center text-[0.8vw] text-white">今日-来电/话务量</div>
       </div>
       <div class="flex-1 w-full overflow-x-auto custom-scrollbar">
         <table class="w-full border-collapse text-white table-fixed">
           <thead class="h-[3.6vh]">
             <tr class="bg-opacity-20">
               <th class="text-center w-[2vw] h-[3vh]">序号</th>
-              <th class="text-center w-[5vw] h-[3vh]">呼叫类型</th>
-              <th class="text-center w-[5vw] h-[3vh]">电话号码</th>
+              <th class="text-center w-[5vw] h-[3vh]">主叫号码</th>
+              <th class="text-center w-[5vw] h-[3vh]">被叫号码</th>
               <th class="text-center w-[5vw] h-[3vh]">接待客服</th>
               <th class="text-center w-[5vw] h-[3vh]">分机号码</th>
-              <th class="text-center w-[5vw] h-[3vh]">呼叫时间</th>
-              <th class="text-center w-[5vw] h-[3vh]">挂断时间</th>
-              <th class="text-center w-[4vw] h-[3vh]">满意度</th>
-              <th class="text-center w-[4vw] h-[3vh]">满意打分</th>
+              <th class="text-center w-[5vw] h-[3vh]">排队时长</th>
+              <th class="text-center w-[5vw] h-[3vh]">振铃时长</th>
+              <th class="text-center w-[4vw] h-[3vh]">通话时长</th>
+              <th class="text-center w-[4vw] h-[3vh]">通话时间</th>
+              <th class="text-center w-[4vw] h-[3vh]">挂断时间</th>
+              <th class="text-center w-[4vw] h-[3vh]">是否录音</th>
+
             </tr>
           </thead>
           <tbody class="h-35.4vh">
@@ -34,20 +37,9 @@
               <td class="h-[4vh] w-[12vw] text-center">{{ item.callTime }}</td>
               <td class="h-[4vh] w-[12vw] text-center">{{ item.hangupTime }}</td>
               <td class="h-[4vh] w-[8vw] text-center">{{ item.satisfaction }}</td>
-              <td class="h-[4vh] w-[8vw] text-center">
-                <span v-for="star in 5" :key="star">
-                  <svg v-if="star <= item.score" width="18" height="18" viewBox="0 0 24 24" fill="#FFB800"
-                    xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;">
-                    <path
-                      d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                  </svg>
-                  <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="#2D3A4B"
-                    xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;">
-                    <path
-                      d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                  </svg>
-                </span>
-              </td>
+              <td class="h-[4vh] w-[8vw] text-center">{{ item.isRecording }}</td>
+              <td class="h-[4vh] w-[8vw] text-center">{{ item.isRecording }}</td>
+              <td class="h-[4vh] w-[8vw] text-center">{{ item.isRecording }}</td>
             </tr>
           </tbody>
         </table>

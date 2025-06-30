@@ -1,5 +1,5 @@
 <script setup>
-import { ref,onMounted } from "vue";
+import { ref, onMounted } from "vue";
 // @ts-ignore
 import CallTrafficModal from "./modal/CallTrafficModal.vue";
 // @ts-ignore
@@ -15,13 +15,17 @@ import WaterOutageNotice from "./WaterOutageNotice.vue";
 
 import axios from '../utils/request';
 
+import NumberOfSeatsModal from "./modal/NumberOfSeatsModal.vue";
+
 const centerDialogVisible = ref(false);
+
+const showNumberOfSeats = ref(false);
 
 onMounted(async () => {
   try {
     const response = await axios.get('/shenyang-report/screen/realtime-agent');
     const data = response.data;
-    console.log(data,'data');
+    console.log(data, 'data');
     cardData.value[0].titleNumber = data.callInCount;
     cardData.value[0].number = data.callInCountDayToDay;
     cardData.value[1].titleNumber = data.callInAnswerCount;
@@ -37,10 +41,11 @@ onMounted(async () => {
   }
 });
 
-// TODO 查看更多
-const lookMore = () => {
-  console.log("查看更多");
+// 查看更多
+const LookMore = () => {
+  showNumberOfSeats.value = true;
 };
+
 </script>
 
 <template>
@@ -67,17 +72,17 @@ const lookMore = () => {
     <!-- 实时坐席 -->
     <div class="flex flex-row ml-[1.67vh] mt-[1.5vh]">
       <img src="../assets/组3047.png" class="w-[1.04vw] h-[1.04vw]" />
-      <div class="ml-[0.2vw]">
+      <div class="ml-[0.2vw] cursor-pointer">
         <p class="text-white text-[0.8vw]">实时坐席</p>
       </div>
     </div>
     <!-- 分割线 -->
     <div class="w-[24vm] h-[1px] bg-[#5792FF] ml-[1.67vh] mt-[0.5vh]"></div>
     <!-- 背景图片1 -->
-    <div class="flex flex-row ml-[1.67vh] w-[24vm] mt-[1.5vh] relative">
+    <div class="flex flex-row ml-[1.67vh] w-[24vm] mt-[1.5vh] relative caret-transparent">
       <img src="../assets/bj(1).png" class="w-full h-[13.5vh]" />
       <img src="../assets/坐席.png" class="w-[2.5vw] h-[6.3vh] absolute top-[0.5vh] left-[1vw]" />
-      <div class="absolute top-[1vh] left-[6vh] w-[4vw] flex flex-col justify-center items-center">
+      <div class="absolute top-[1vh] left-[6vh] w-[4vw] flex flex-col justify-center items-center hover:cursor-pointer" @click="LookMore">
         <div class="flex flex-row">
           <p class="text-[#99DFFF] text-[1.2vw]">122</p>
           <div class="flex flex-col justify-end">
@@ -87,7 +92,7 @@ const lookMore = () => {
         <p class="text-[#BFDCFF] text-[0.5vw]">通话坐席数</p>
       </div>
       <img src="../assets/示忙.png" class="w-[2.5vw] h-[6.3vh] absolute top-[7vh] left-[1vw]" />
-      <div class="absolute top-[8vh] left-[6vh] w-[4vw] flex flex-col justify-center items-center">
+      <div class="absolute top-[8vh] left-[6vh] w-[4vw] flex flex-col justify-center items-center hover:cursor-pointer" @click="LookMore">
         <div class="flex flex-row">
           <p class="text-[#99DFFF] text-[1.2vw]">122</p>
           <div class="flex flex-col justify-end">
@@ -98,7 +103,7 @@ const lookMore = () => {
       </div>
 
       <img src="../assets/离线.png" class="w-[2.5vw] h-[6.3vh] absolute top-[7vh] left-[21vw]" />
-      <div class="absolute top-[8vh] left-[17vw] w-[4vw] flex flex-col justify-center items-center">
+      <div class="absolute top-[8vh] left-[17vw] w-[4vw] flex flex-col justify-center items-center hover:cursor-pointer" @click="LookMore">
         <div class="flex flex-row">
           <p class="text-[#99DFFF] text-[1.2vw]">122</p>
           <div class="flex flex-col justify-end">
@@ -109,7 +114,7 @@ const lookMore = () => {
       </div>
 
       <img src="../assets/示闲.png" class="w-[2.5vw] h-[6.3vh] absolute top-[0.5vh] left-[21vw]" />
-      <div class="absolute top-[1vh] left-[17vw] w-[4vw] flex flex-col justify-center items-center">
+      <div class="absolute top-[1vh] left-[17vw] w-[4vw] flex flex-col justify-center items-center hover:cursor-pointer" @click="LookMore">
         <div class="flex flex-row">
           <p class="text-[#99DFFF] text-[1.2vw]">122</p>
           <div class="flex flex-col justify-end">
@@ -128,7 +133,7 @@ const lookMore = () => {
           backgroundImage: `url(${juxingkaobei})`,
           backgroundPosition: 'center center',
           backgroundSize: '100% 100%',
-        }" :click="lookMore">
+        }" @click="LookMore">
           查看更多
         </div>
       </div>
@@ -139,4 +144,5 @@ const lookMore = () => {
     <WaterOutageNotice />
   </div>
   <CallTrafficModal v-model="centerDialogVisible" />
+  <NumberOfSeatsModal v-model="showNumberOfSeats" @close="showNumberOfSeats = false" />
 </template>

@@ -1,3 +1,4 @@
+<!-- 分页组件 -->
 <template>
   <div class="flex justify-between items-center px-[0.1vw]">
     <div class="text-sm text-[#6C9CE3]">总共 {{ total }} 条</div>

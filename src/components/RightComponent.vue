@@ -334,7 +334,7 @@ const format = (percentage) => (percentage === 100 ? "Full" : `${percentage}%`);
         </el-button>
       </div>
     </div>
-    <div class="flex flex-col mr-[0.83vh]">
+    <div class="flex flex-col mr-[0.83vh] mt-[0.83vh]">
       <ProgressBar label="皇姑" :percentage="98.5" />
       <ProgressBar label="铁西" :percentage="95.9" />
       <ProgressBar label="沈河" :percentage="93.5" />

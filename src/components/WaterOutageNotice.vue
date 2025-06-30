@@ -1,12 +1,16 @@
 <!-- 停水公告组件 -->
 <script setup>
 import { ref } from "vue";
+import WaterOutageNoticeModal from "./modal/WaterOutageNoticeModal.vue";
 // @ts-ignore
 import title from "../assets/title.png";
 // @ts-ignore
 import zhongjie from "../assets/中街.png";
 
+import changgui from "../assets/常规按钮.png"
+
 const selectedIndex = ref(0);
+const showModal = ref(false);
 
 const notices = [
     {
@@ -39,10 +43,14 @@ const getImageUrl = (path) => {
 const handleCardClick = (index) => {
     selectedIndex.value = index;
 };
+
+const handleDetailClick = () => {
+    showModal.value = true;
+};
 </script>
 
 <template>
-    <div class="w-[24.8vw] h-[3.3vh] flex flex-row ml-[0.65vw] mt-[1.5vh]" :style="{
+    <div class="w-[24.8vw] h-[3.3vh] flex flex-row ml-[0.65vw] mt-[1.5vh] caret-transparent" :style="{
         backgroundImage: `url(${title})`,
         backgroundPosition: 'center center',
         backgroundSize: '100% 100%',
@@ -57,7 +65,7 @@ const handleCardClick = (index) => {
         </div>
     </div>
     <!-- 卡片列表 -->
-    <div v-for="(notice, index) in notices" :key="notice.id" class="flex flex-row ml-[0.83vh] mt-[1.5vh] cursor-pointer"
+    <div v-for="(notice, index) in notices" :key="notice.id" class="flex flex-row ml-[0.83vh] mt-[1.5vh] caret-transparent cursor-pointer"
         @click="handleCardClick(index)">
         <div class="relative">
             <img :src="getImageUrl(
@@ -76,7 +84,15 @@ const handleCardClick = (index) => {
                     <p class="text-[#6C9CE3] truncate max-w-[18vw] text-[0.5vw]">{{ notice.time }}</p>
                 </div>
             </div>
-            <div class="absolute top-[2.5vh] right-[3vw] text-[#6C9CE3] text-[0.5vw]">查看详情</div>
+            <div class="absolute top-[1.8vh] right-[2vw] w-[3.2vw] h-[2.6vh]" :style="{
+                backgroundImage: `url(${changgui})`,
+                backgroundPosition: 'center center',
+                backgroundSize: '100% 100%',
+            }">
+                <div class=" text-[#6C9CE3] text-[0.5vw] cursor-pointer mt-[0.5vh]" @click.stop="handleDetailClick">查看详情
+                </div>
+            </div>
         </div>
     </div>
+    <WaterOutageNoticeModal v-model="showModal" @close="showModal = false" />
 </template>
