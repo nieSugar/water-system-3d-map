@@ -97,10 +97,18 @@ export class THREEMAP extends THREE.Group {
 
   // ------------------ 底部半透明层控制 ------------------ //
   private bottomLayerParams = {
-    opacity: 0.4,
-    offset: 0 // 额外向下偏移量
+    // 第二层（区域底面）透明度
+    secondOpacity: 0.4,
+    // 第三层（最底层外轮廓）透明度
+    thirdOpacity: 0.4,
+    // 第二层额外向下偏移量
+    offset: 40
   }
-  private allBottomMeshes: THREE.Mesh[] = []
+
+  // 第二层网格集合（polygon bottom）
+  private allSecondLayerMeshes: THREE.Mesh[] = []
+  // 第三层网格集合（outer wall bottom）
+  private allThirdLayerMeshes: THREE.Mesh[] = []
 
   /**
    * 获取（或创建）指定行政区的材质
@@ -464,7 +472,7 @@ export class THREEMAP extends THREE.Group {
     this.applyZGradient(bottomGeo, material.color, depth)
 
     const bottomMat = material.clone()
-    bottomMat.opacity = this.bottomLayerParams.opacity
+    bottomMat.opacity = this.bottomLayerParams.secondOpacity
     bottomMat.transparent = true
     bottomMat.color.setHex(this.zColorParams.sideColor)
 
@@ -476,7 +484,7 @@ export class THREEMAP extends THREE.Group {
     bottomMesh.position.z = -this.bottomLayerParams.offset
 
     this.add(bottomMesh)
-    this.allBottomMeshes.push(bottomMesh)
+    this.allSecondLayerMeshes.push(bottomMesh)
   }
 
   /**
@@ -515,7 +523,7 @@ export class THREEMAP extends THREE.Group {
         this.applyZGradient(bottomGeo, material.color, depth)
 
         const bottomMat = material.clone()
-        bottomMat.opacity = this.bottomLayerParams.opacity
+        bottomMat.opacity = this.bottomLayerParams.secondOpacity
         bottomMat.transparent = true
         bottomMat.color.setHex(this.zColorParams.sideColor)
 
@@ -525,7 +533,7 @@ export class THREEMAP extends THREE.Group {
         bottomMesh.receiveShadow = true
         bottomMesh.position.z = -this.bottomLayerParams.offset
         group.add(bottomMesh)
-        this.allBottomMeshes.push(bottomMesh)
+        this.allSecondLayerMeshes.push(bottomMesh)
       })
     }
     this.add(group)
@@ -639,7 +647,7 @@ export class THREEMAP extends THREE.Group {
     bottomGeo.translate(0, 0, -depth - 0.1)
 
     const bottomMat = mat.clone()
-    bottomMat.opacity = this.bottomLayerParams.opacity
+    bottomMat.opacity = this.bottomLayerParams.thirdOpacity
     bottomMat.transparent = true
 
     const bottomWall = new THREE.Mesh(bottomGeo, bottomMat)
@@ -648,6 +656,9 @@ export class THREEMAP extends THREE.Group {
     bottomWall.receiveShadow = true
 
     this.add(bottomWall)
+
+    // 存储到第三层集合，便于统一控制
+    this.allThirdLayerMeshes.push(bottomWall)
   }
 
   /**
@@ -785,21 +796,26 @@ export class THREEMAP extends THREE.Group {
       const hex = typeof val === 'string' ? parseInt(val.replace('#', '0x'), 16) : val
       this.zColorParams.sideColor = hex
       this.updateZGradientColors()
-      this.updateAllBottomColors()
+      this.updateAllSecondLayerColors()
     })
 
     gradientFolder.add(this.zColorParams, 'glow', 0, 1, 0.01).name('亮度提升').onChange(() => {
       this.updateZGradientColors()
     })
 
-    // 底层透明度
-    gradientFolder.add(this.bottomLayerParams, 'opacity', 0, 1, 0.01).name('底层透明度').onChange(() => {
-      this.updateAllBottomLayers()
+    // 第二层透明度
+    gradientFolder.add(this.bottomLayerParams, 'secondOpacity', 0, 1, 0.01).name('第二层透明度').onChange(() => {
+      this.updateAllSecondLayerLayers()
+    })
+
+    // 第三层透明度
+    gradientFolder.add(this.bottomLayerParams, 'thirdOpacity', 0, 1, 0.01).name('第三层透明度').onChange(() => {
+      this.updateAllThirdLayerLayers()
     })
 
     // 底层额外 Z 偏移
-    gradientFolder.add(this.bottomLayerParams, 'offset', 0, 100, 1).name('底层Z偏移').onChange(() => {
-      this.updateAllBottomPositions()
+    gradientFolder.add(this.bottomLayerParams, 'offset', 0, 100, 1).name('第二层Z偏移').onChange(() => {
+      this.updateAllSecondLayerPositions()
     })
 
     gradientFolder.open()
@@ -953,30 +969,44 @@ export class THREEMAP extends THREE.Group {
   }
 
   /**
-   * 更新所有底部层透明度
+   * 更新所有第二层透明度
    */
-  private updateAllBottomLayers() {
-    this.allBottomMeshes.forEach(mesh => {
+  private updateAllSecondLayerLayers() {
+    this.allSecondLayerMeshes.forEach(mesh => {
       const mat = mesh.material as THREE.Material
       if ('opacity' in mat) {
-        (mat as any).opacity = this.bottomLayerParams.opacity
-        mat.transparent = this.bottomLayerParams.opacity < 1
+        (mat as any).opacity = this.bottomLayerParams.secondOpacity
+        mat.transparent = this.bottomLayerParams.secondOpacity < 1
         mat.needsUpdate = true
       }
     })
   }
 
-  private updateAllBottomColors() {
-    this.allBottomMeshes.forEach(mesh => {
+  private updateAllSecondLayerColors() {
+    this.allSecondLayerMeshes.forEach(mesh => {
       const mat = mesh.material as THREE.MeshLambertMaterial
       mat.color.setHex(this.zColorParams.sideColor)
       mat.needsUpdate = true
     })
   }
 
-  private updateAllBottomPositions() {
-    this.allBottomMeshes.forEach(mesh => {
+  private updateAllSecondLayerPositions() {
+    this.allSecondLayerMeshes.forEach(mesh => {
       mesh.position.z = -this.bottomLayerParams.offset
+    })
+  }
+
+  /**
+   * 更新所有第三层透明度
+   */
+  private updateAllThirdLayerLayers() {
+    this.allThirdLayerMeshes.forEach(mesh => {
+      const mat = mesh.material as THREE.Material
+      if ('opacity' in mat) {
+        (mat as any).opacity = this.bottomLayerParams.thirdOpacity
+        mat.transparent = this.bottomLayerParams.thirdOpacity < 1
+        mat.needsUpdate = true
+      }
     })
   }
 }
