@@ -126,17 +126,29 @@ export class THREEMAP extends THREE.Group {
 
     // 自定义 shader，同之前逻辑
     material.onBeforeCompile = (shader) => {
-      shader.uniforms.uMix = { value: this.textureMixRatio }
+      // 自定义混合权重 uniform以及贴图染色开关，并在 material.userData 上保留引用，方便后续修改
+      shader.uniforms.uMix = { value: this.textureMixRatio };
+      shader.uniforms.uTint = { value: 1.0 }; // 1 表示贴图乘组色，0 表示纯贴图
+      (material as any).userData = (material as any).userData || {};
+      (material as any).userData.uMix = shader.uniforms.uMix;
+      (material as any).userData.uTint = shader.uniforms.uTint;
 
+      // 使用组颜色调制纹理，让调整颜色仍然生效；
+      // uMix = 0 纯组色，uMix = 1 纹理 * 组色
       shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `#ifdef USE_MAP
         vec4 sampledDiffuseColor = texture2D( map, vMapUv );
-        diffuseColor = mix(diffuseColor, sampledDiffuseColor, uMix);
+        vec3 baseColor = diffuseColor.rgb;
+        // 当 uTint 为 1 使用乘色贴图，0 使用纯贴图
+        vec3 texColor = mix(sampledDiffuseColor.rgb, sampledDiffuseColor.rgb * baseColor, uTint);
+        vec3 finalColor = mix(baseColor, texColor, uMix);
+        diffuseColor.rgb = finalColor;
 #endif
         // 丢弃挤出侧面（normal.y != 0 表示侧面）
         if(abs(myBorder.y) > 1e-4){
               discard;
         }`).replace('uniform vec3 diffuse;', `uniform vec3 diffuse;
         uniform float uMix;
+        uniform float uTint;
         varying vec3 myBorder;`)
 
       shader.vertexShader = shader.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
@@ -204,6 +216,10 @@ export class THREEMAP extends THREE.Group {
 
     // 保存纹理引用
     this.texture = options?.texture?.value || null
+    // 如果提供了纹理，默认启用纹理混合（1 = 仅纹理）
+    if (this.texture) {
+      this.textureMixRatio = 1
+    }
     if (mapData.type == 'FeatureCollection') {
       mapData.features.forEach((feature: any) => {
         // if (feature.properties.name == '康平县') {
@@ -676,20 +692,21 @@ export class THREEMAP extends THREE.Group {
     // 全局纹理混合控制
     const globalFolder = this.gui.addFolder('全局')
     const mixParam = { value: this.textureMixRatio }
+    const tintParam = { value: 1 }
     globalFolder.add(mixParam, 'value', 0, 1, 0.01).name('纹理混合').onChange((val: number) => {
       this.textureMixRatio = val
-      // 更新所有材质的 uniform
+      // 遍历组材质，实时更新 uniform
       Object.values(this.groupMaterials).forEach(mat => {
-        const uniforms = (mat as any).userData?.uniforms ?? (mat as any).__shader?.uniforms ?? undefined
+        const u = (mat as any).userData?.uMix
+        if (u) u.value = val
       })
-      // safer: traverse materials and set uniform if present
-      this.traverse(obj => {
-        if (obj instanceof THREE.Mesh) {
-          const mtl = obj.material as any
-          if (mtl && mtl.uniforms && mtl.uniforms.uMix) {
-            mtl.uniforms.uMix.value = val
-          }
-        }
+    })
+
+    globalFolder.add(tintParam, 'value', { '纯贴图': 0, '染色贴图': 1 }).name('贴图染色').onChange((val: any) => {
+      const tintVal = typeof val === 'string' ? parseFloat(val) : Number(val)
+      Object.values(this.groupMaterials).forEach(mat => {
+        const u = (mat as any).userData?.uTint
+        if (u) u.value = tintVal
       })
     })
 
