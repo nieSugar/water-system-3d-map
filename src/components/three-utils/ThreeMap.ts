@@ -86,7 +86,7 @@ export class THREEMAP extends THREE.Group {
   private groupMaterials: Record<string, THREE.MeshLambertMaterial> = {}
 
   // 纹理与区域色混合比（0=纯色，1=纯纹理）
-  private textureMixRatio = 0
+  private textureMixRatio = 0.65
 
   // ------------------ Z 轴侧面颜色控制 ------------------ //
   private zColorParams = {
@@ -94,6 +94,12 @@ export class THREEMAP extends THREE.Group {
     sideColor: 0x0ac2ff as number,
     glow: 0.66 // 0-1 对应提升 1-4 倍亮度
   }
+
+  // ------------------ 底部半透明层控制 ------------------ //
+  private bottomLayerParams = {
+    opacity: 0.4
+  }
+  private allBottomMeshes: THREE.Mesh[] = []
 
   /**
    * 获取（或创建）指定行政区的材质
@@ -128,7 +134,7 @@ export class THREEMAP extends THREE.Group {
     material.onBeforeCompile = (shader) => {
       // 自定义混合权重 uniform以及贴图染色开关，并在 material.userData 上保留引用，方便后续修改
       shader.uniforms.uMix = { value: this.textureMixRatio };
-      shader.uniforms.uTint = { value: 1.0 }; // 1 表示贴图乘组色，0 表示纯贴图
+      shader.uniforms.uTint = { value: 0.0 }; // 0 表示纯贴图，1 表示贴图乘组色
       (material as any).userData = (material as any).userData || {};
       (material as any).userData.uMix = shader.uniforms.uMix;
       (material as any).userData.uTint = shader.uniforms.uTint;
@@ -216,8 +222,8 @@ export class THREEMAP extends THREE.Group {
 
     // 保存纹理引用
     this.texture = options?.texture?.value || null
-    // 如果提供了纹理，默认启用纹理混合（1 = 仅纹理）
-    if (this.texture) {
+    // 如果提供了纹理，且尚未自定义混合比（保持 0），则默认启用纯纹理显示
+    if (this.texture && this.textureMixRatio === 0) {
       this.textureMixRatio = 1
     }
     if (mapData.type == 'FeatureCollection') {
@@ -444,9 +450,30 @@ export class THREEMAP extends THREE.Group {
     mesh.castShadow = true
     mesh.receiveShadow = true
 
-    // 添加网格和虚线轮廓到场景
+    // 添加顶部网格和虚线轮廓
     this.add(mesh)
     this.add(outLine)
+
+    // ------------------ 底部半透明层 ------------------ //
+    const depth = (geometry as any).parameters?.depth ?? 30
+    const bottomGeo = geometry.clone()
+    // 向下平移同等深度并略微再移 0.1，防止 z-fighting
+    bottomGeo.translate(0, 0, -depth - 0.1)
+    // 复用顶部颜色渐变
+    this.applyZGradient(bottomGeo, material.color, depth)
+
+    const bottomMat = material.clone()
+    bottomMat.opacity = this.bottomLayerParams.opacity
+    bottomMat.transparent = true
+    bottomMat.color.setHex(this.zColorParams.sideColor)
+
+    const bottomMesh = new THREE.Mesh(bottomGeo, bottomMat)
+    bottomMesh.name = name + '-bottom'
+    bottomMesh.castShadow = false
+    bottomMesh.receiveShadow = true
+
+    this.add(bottomMesh)
+    this.allBottomMeshes.push(bottomMesh)
   }
 
   /**
@@ -474,9 +501,27 @@ export class THREEMAP extends THREE.Group {
         mesh.name = name
         mesh.castShadow = true;
         mesh.receiveShadow = true;
-        // 添加网格和虚线轮廓到组
+        // 添加顶部网格和虚线轮廓到组
         group.add(mesh)
         group.add(outLine)
+
+        // ------------------ 底部半透明层 ------------------ //
+        const depth = (geometry as any).parameters?.depth ?? 30
+        const bottomGeo = geometry.clone()
+        bottomGeo.translate(0, 0, -depth - 0.1)
+        this.applyZGradient(bottomGeo, material.color, depth)
+
+        const bottomMat = material.clone()
+        bottomMat.opacity = this.bottomLayerParams.opacity
+        bottomMat.transparent = true
+        bottomMat.color.setHex(this.zColorParams.sideColor)
+
+        const bottomMesh = new THREE.Mesh(bottomGeo, bottomMat)
+        bottomMesh.name = name + (i + 1) + '-bottom'
+        bottomMesh.castShadow = false
+        bottomMesh.receiveShadow = true
+        group.add(bottomMesh)
+        this.allBottomMeshes.push(bottomMesh)
       })
     }
     this.add(group)
@@ -546,7 +591,6 @@ export class THREEMAP extends THREE.Group {
     const vertices: number[] = []
     const colors: number[] = []
 
-    const topColor = new THREE.Color(0xffffff)
     const sideColor = new THREE.Color(this.zColorParams.sideColor).multiplyScalar(1 + this.zColorParams.glow * 3)
 
     Object.values(edgeCount).forEach(({ v1, v2, count }) => {
@@ -692,8 +736,10 @@ export class THREEMAP extends THREE.Group {
     // 全局纹理混合控制
     const globalFolder = this.gui.addFolder('全局')
     const mixParam = { value: this.textureMixRatio }
-    const tintParam = { value: 1 }
-    globalFolder.add(mixParam, 'value', 0, 1, 0.01).name('纹理混合').onChange((val: number) => {
+    const tintParam = { value: 0 }
+    const mixController = globalFolder.add(mixParam, 'value', 0, 1, 0.01).name('纹理混合')
+    mixController.setValue(this.textureMixRatio)
+    mixController.onChange((val: number) => {
       this.textureMixRatio = val
       // 遍历组材质，实时更新 uniform
       Object.values(this.groupMaterials).forEach(mat => {
@@ -719,10 +765,16 @@ export class THREEMAP extends THREE.Group {
       const hex = typeof val === 'string' ? parseInt(val.replace('#', '0x'), 16) : val
       this.zColorParams.sideColor = hex
       this.updateZGradientColors()
+      this.updateAllBottomColors()
     })
 
     gradientFolder.add(this.zColorParams, 'glow', 0, 1, 0.01).name('亮度提升').onChange(() => {
       this.updateZGradientColors()
+    })
+
+    // 底层透明度
+    gradientFolder.add(this.bottomLayerParams, 'opacity', 0, 1, 0.01).name('底层透明度').onChange(() => {
+      this.updateAllBottomLayers()
     })
 
     gradientFolder.open()
@@ -873,6 +925,28 @@ export class THREEMAP extends THREE.Group {
     }
 
     geometry.attributes.color.needsUpdate = true
+  }
+
+  /**
+   * 更新所有底部层透明度
+   */
+  private updateAllBottomLayers() {
+    this.allBottomMeshes.forEach(mesh => {
+      const mat = mesh.material as THREE.Material
+      if ('opacity' in mat) {
+        (mat as any).opacity = this.bottomLayerParams.opacity
+        mat.transparent = this.bottomLayerParams.opacity < 1
+        mat.needsUpdate = true
+      }
+    })
+  }
+
+  private updateAllBottomColors() {
+    this.allBottomMeshes.forEach(mesh => {
+      const mat = mesh.material as THREE.MeshLambertMaterial
+      mat.color.setHex(this.zColorParams.sideColor)
+      mat.needsUpdate = true
+    })
   }
 }
 
