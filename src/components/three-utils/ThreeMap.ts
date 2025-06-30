@@ -97,7 +97,8 @@ export class THREEMAP extends THREE.Group {
 
   // ------------------ 底部半透明层控制 ------------------ //
   private bottomLayerParams = {
-    opacity: 0.4
+    opacity: 0.4,
+    offset: 0 // 额外向下偏移量
   }
   private allBottomMeshes: THREE.Mesh[] = []
 
@@ -471,6 +472,8 @@ export class THREEMAP extends THREE.Group {
     bottomMesh.name = name + '-bottom'
     bottomMesh.castShadow = false
     bottomMesh.receiveShadow = true
+    // 初始额外偏移
+    bottomMesh.position.z = -this.bottomLayerParams.offset
 
     this.add(bottomMesh)
     this.allBottomMeshes.push(bottomMesh)
@@ -520,6 +523,7 @@ export class THREEMAP extends THREE.Group {
         bottomMesh.name = name + (i + 1) + '-bottom'
         bottomMesh.castShadow = false
         bottomMesh.receiveShadow = true
+        bottomMesh.position.z = -this.bottomLayerParams.offset
         group.add(bottomMesh)
         this.allBottomMeshes.push(bottomMesh)
       })
@@ -628,6 +632,22 @@ export class THREEMAP extends THREE.Group {
     wallMesh.receiveShadow = true
 
     this.add(wallMesh)
+
+    // ------------------- 最底层仅轮廓 ------------------- //
+    const bottomGeo = geo.clone()
+    // 再向下平移 depth，位于第二层下方
+    bottomGeo.translate(0, 0, -depth - 0.1)
+
+    const bottomMat = mat.clone()
+    bottomMat.opacity = this.bottomLayerParams.opacity
+    bottomMat.transparent = true
+
+    const bottomWall = new THREE.Mesh(bottomGeo, bottomMat)
+    bottomWall.name = 'outer-wall-bottom'
+    bottomWall.castShadow = false
+    bottomWall.receiveShadow = true
+
+    this.add(bottomWall)
   }
 
   /**
@@ -775,6 +795,11 @@ export class THREEMAP extends THREE.Group {
     // 底层透明度
     gradientFolder.add(this.bottomLayerParams, 'opacity', 0, 1, 0.01).name('底层透明度').onChange(() => {
       this.updateAllBottomLayers()
+    })
+
+    // 底层额外 Z 偏移
+    gradientFolder.add(this.bottomLayerParams, 'offset', 0, 100, 1).name('底层Z偏移').onChange(() => {
+      this.updateAllBottomPositions()
     })
 
     gradientFolder.open()
@@ -946,6 +971,12 @@ export class THREEMAP extends THREE.Group {
       const mat = mesh.material as THREE.MeshLambertMaterial
       mat.color.setHex(this.zColorParams.sideColor)
       mat.needsUpdate = true
+    })
+  }
+
+  private updateAllBottomPositions() {
+    this.allBottomMeshes.forEach(mesh => {
+      mesh.position.z = -this.bottomLayerParams.offset
     })
   }
 }
