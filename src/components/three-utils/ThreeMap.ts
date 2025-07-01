@@ -102,7 +102,11 @@ export class THREEMAP extends THREE.Group {
     // 第三层（最底层外轮廓）透明度
     thirdOpacity: 0.4,
     // 第二层额外向下偏移量
-    offset: 40
+    offset: 40,
+    // 第二层侧面颜色
+    secondColor: 0x0ac2ff as number,
+    // 第三层侧面颜色
+    thirdColor: 0x0ac2ff as number
   }
 
   // 第二层网格集合（polygon bottom）
@@ -467,7 +471,9 @@ export class THREEMAP extends THREE.Group {
     const bottomMat = material.clone()
     bottomMat.opacity = this.bottomLayerParams.secondOpacity
     bottomMat.transparent = true
-    bottomMat.color.setHex(this.zColorParams.sideColor)
+    // 与顶面渐变独立的统一颜色
+    bottomMat.vertexColors = false
+    bottomMat.color.setHex(this.bottomLayerParams.secondColor)
 
     const bottomMesh = new THREE.Mesh(bottomGeo, bottomMat)
     bottomMesh.name = name + '-bottom'
@@ -518,7 +524,8 @@ export class THREEMAP extends THREE.Group {
         const bottomMat = material.clone()
         bottomMat.opacity = this.bottomLayerParams.secondOpacity
         bottomMat.transparent = true
-        bottomMat.color.setHex(this.zColorParams.sideColor)
+        bottomMat.vertexColors = false
+        bottomMat.color.setHex(this.bottomLayerParams.secondColor)
 
         const bottomMesh = new THREE.Mesh(bottomGeo, bottomMat)
         bottomMesh.name = name + (i + 1) + '-bottom'
@@ -642,6 +649,9 @@ export class THREEMAP extends THREE.Group {
     const bottomMat = mat.clone()
     bottomMat.opacity = this.bottomLayerParams.thirdOpacity
     bottomMat.transparent = true
+    // 使用独立颜色并禁用顶点色
+    bottomMat.vertexColors = false
+    bottomMat.color.setHex(this.bottomLayerParams.thirdColor)
 
     const bottomWall = new THREE.Mesh(bottomGeo, bottomMat)
     bottomWall.name = 'outer-wall-bottom'
@@ -789,11 +799,26 @@ export class THREEMAP extends THREE.Group {
       const hex = typeof val === 'string' ? parseInt(val.replace('#', '0x'), 16) : val
       this.zColorParams.sideColor = hex
       this.updateZGradientColors()
-      this.updateAllSecondLayerColors()
     })
 
     gradientFolder.add(this.zColorParams, 'glow', 0, 1, 0.01).name('亮度提升').onChange(() => {
       this.updateZGradientColors()
+    })
+
+    // 第二层颜色
+    const secondColorParam = { value: `#${this.bottomLayerParams.secondColor.toString(16).padStart(6, '0')}` }
+    gradientFolder.addColor(secondColorParam, 'value').name('第二层颜色').onChange((val: any) => {
+      const hex = typeof val === 'string' ? parseInt(val.replace('#', '0x'), 16) : val
+      this.bottomLayerParams.secondColor = hex
+      this.updateAllSecondLayerColors()
+    })
+
+    // 第三层颜色
+    const thirdColorParam = { value: `#${this.bottomLayerParams.thirdColor.toString(16).padStart(6, '0')}` }
+    gradientFolder.addColor(thirdColorParam, 'value').name('第三层颜色').onChange((val: any) => {
+      const hex = typeof val === 'string' ? parseInt(val.replace('#', '0x'), 16) : val
+      this.bottomLayerParams.thirdColor = hex
+      this.updateAllThirdLayerColors()
     })
 
     // 第二层透明度
@@ -978,7 +1003,8 @@ export class THREEMAP extends THREE.Group {
   private updateAllSecondLayerColors() {
     this.allSecondLayerMeshes.forEach(mesh => {
       const mat = mesh.material as THREE.MeshLambertMaterial
-      mat.color.setHex(this.zColorParams.sideColor)
+      mat.vertexColors = false
+      mat.color.setHex(this.bottomLayerParams.secondColor)
       mat.needsUpdate = true
     })
   }
@@ -1000,6 +1026,18 @@ export class THREEMAP extends THREE.Group {
         mat.transparent = this.bottomLayerParams.thirdOpacity < 1
         mat.needsUpdate = true
       }
+    })
+  }
+
+  /**
+   * 更新所有第三层颜色
+   */
+  private updateAllThirdLayerColors() {
+    this.allThirdLayerMeshes.forEach(mesh => {
+      const mat = mesh.material as THREE.MeshLambertMaterial
+      mat.vertexColors = false
+      mat.color.setHex(this.bottomLayerParams.thirdColor)
+      mat.needsUpdate = true
     })
   }
 }
