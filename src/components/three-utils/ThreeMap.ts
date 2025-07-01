@@ -33,7 +33,7 @@ export class THREEMAP extends THREE.Group {
   private minY = -1.5291082763671875
 
   private texture: THREE.Texture | null  // 地图纹理贴图
-  private series: { [keyof: string]: number } = {}  // 区域名称到颜色的映射
+
 
   // GUI 调试相关属性
   private gui: GUI | null = null
@@ -183,7 +183,6 @@ export class THREEMAP extends THREE.Group {
   /**
    * 构造函数
    * @param mapData - GeoJSON 格式的地图数据
-   * @param series - 可选的区域配色方案数组
    * @param options - 可选的地图配置参数
    * @param options.scale - 地图缩放比例
    * @param options.center - 地图中心点坐标 [经度, 纬度]
@@ -192,17 +191,11 @@ export class THREEMAP extends THREE.Group {
    * @param options.texture.min - 纹理映射最小坐标 [经度, 纬度]
    * @param options.texture.max - 纹理映射最大坐标 [经度, 纬度]
    */
-  constructor(mapData: any, series?: { name: string, color: number }[],
-    options?: {
+  constructor(mapData: any, options?: {
       scale?: number, center?: [number, number],
       texture?: { value: THREE.Texture, min?: [number, number], max?: [number, number] }
     }) {
     super()
-
-    // 构建区域名称到颜色的映射表
-    series?.forEach(s => {
-      this.series[s.name] = s.color
-    })
 
     // 创建 D3.js 等距圆柱投影
     // 等距圆柱投影：保持经纬度网格为矩形，适合简单的地图显示

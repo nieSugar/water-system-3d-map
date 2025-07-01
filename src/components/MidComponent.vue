@@ -66,28 +66,7 @@ onMounted(() => {
   fetch('/shengyang.json')
     .then(res => res.json())
     .then(shenyang => {
-      // group1 : 红色
-      // group2 : 黄色
-      // group3 : 蓝色
-      const colors = [
-        { name: '康平县', color: 0xff0000 },
-        { name: '法库县', color: 0xff0000 },
-
-        { name: '新民市', color: 0xf7d358 },
-        { name: '辽中区', color: 0xf7d358 },
-
-        { name: '于洪区', color: 0x5dade2 },
-        { name: '沈北新区', color: 0x5dade2 },
-        { name: '大东区', color: 0x5dade2 },
-        { name: '和平区', color: 0x5dade2 },
-        { name: '苏家屯区', color: 0x5dade2 },
-        { name: '浑南区', color: 0x5dade2 },
-        { name: '沈河区', color: 0x5dade2 },
-        { name: '皇姑区', color: 0x5dade2 },
-        { name: '铁西区', color: 0x5dade2 }
-      ]
-
-      map = new THREEMAP(shenyang, colors, {
+      map = new THREEMAP(shenyang, {
         // 地图配置参数
         scale: 13000,                           // 地图缩放比例
         center: [-123.406664, -41.788074],      // 地图中心点坐标（沈阳市中心）
@@ -97,17 +76,6 @@ onMounted(() => {
           min: [122.422105, 41.199854]                // 纹理映射最小坐标
         }
       })
-
-      // 创建标记点精灵材质和对象
-      const texture = new THREE.TextureLoader().load(maodian)
-      const material = new THREE.SpriteMaterial({ map: texture, })
-      const sprite = new THREE.Sprite(material)
-      sprite.scale.set(10, 10, 10)  // 设置标记点大小
-
-      // 创建预设标记点并添加到场景
-      const psp = sprite.clone()
-      psp.position.set(-33, 7, 9)  // 设置预设标记点位置
-      scene.add(psp)
 
       // 为地图的每个区域添加点击事件监听
       // map.traverse((child) => {
