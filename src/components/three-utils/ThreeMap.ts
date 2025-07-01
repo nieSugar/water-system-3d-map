@@ -712,33 +712,8 @@ export class THREEMAP extends THREE.Group {
       this.updateAllOutlines()
     })
 
-    // 实线控制面板
-    const solidFolder = this.gui.addFolder('实线控制')
-
-    // 启用/禁用实线
-    solidFolder.add(this.solidLineParams, 'enabled').name('启用实线').onChange(() => {
-      this.updateAllSolidOutlines()
-    })
-
-    // 实线颜色控制
-    solidFolder.addColor(this.solidLineParams, 'color').name('颜色').onChange(() => {
-      this.updateAllSolidOutlines()
-    })
-
-    // 实线线宽控制
-    solidFolder.add(this.solidLineParams, 'linewidth', 0, 10, 0.1).name('线宽').onChange(() => {
-      this.updateAllSolidOutlines()
-    })
-
-    // 实线透明度控制
-    solidFolder.add(this.solidLineParams, 'opacity', 0, 1, 0.01).name('透明度').onChange(() => {
-      this.updateAllSolidOutlines()
-    })
-
     // 默认展开虚线面板
     dashedFolder.open()
-    // 默认展开实线面板
-    solidFolder.open()
 
     // ----------------------------- 颜色控制面板 ----------------------------- //
     const styleFolder = this.gui.addFolder('组样式')
@@ -805,34 +780,34 @@ export class THREEMAP extends THREE.Group {
       this.updateZGradientColors()
     })
 
-    // 第二层颜色
+    // 第三层颜色
     const secondColorParam = { value: `#${this.bottomLayerParams.secondColor.toString(16).padStart(6, '0')}` }
-    gradientFolder.addColor(secondColorParam, 'value').name('第二层颜色').onChange((val: any) => {
+    gradientFolder.addColor(secondColorParam, 'value').name('第三层颜色').onChange((val: any) => {
       const hex = typeof val === 'string' ? parseInt(val.replace('#', '0x'), 16) : val
       this.bottomLayerParams.secondColor = hex
       this.updateAllSecondLayerColors()
     })
 
-    // 第三层颜色
+    // 第二层颜色
     const thirdColorParam = { value: `#${this.bottomLayerParams.thirdColor.toString(16).padStart(6, '0')}` }
-    gradientFolder.addColor(thirdColorParam, 'value').name('第三层颜色').onChange((val: any) => {
+    gradientFolder.addColor(thirdColorParam, 'value').name('第二层颜色').onChange((val: any) => {
       const hex = typeof val === 'string' ? parseInt(val.replace('#', '0x'), 16) : val
       this.bottomLayerParams.thirdColor = hex
       this.updateAllThirdLayerColors()
     })
 
-    // 第二层透明度
-    gradientFolder.add(this.bottomLayerParams, 'secondOpacity', 0, 1, 0.01).name('第二层透明度').onChange(() => {
+    // 第三层透明度
+    gradientFolder.add(this.bottomLayerParams, 'secondOpacity', 0, 1, 0.01).name('第三层透明度').onChange(() => {
       this.updateAllSecondLayerLayers()
     })
 
-    // 第三层透明度
-    gradientFolder.add(this.bottomLayerParams, 'thirdOpacity', 0, 1, 0.01).name('第三层透明度').onChange(() => {
+    // 第二层透明度
+    gradientFolder.add(this.bottomLayerParams, 'thirdOpacity', 0, 1, 0.01).name('第二层透明度').onChange(() => {
       this.updateAllThirdLayerLayers()
     })
 
     // 底层额外 Z 偏移
-    gradientFolder.add(this.bottomLayerParams, 'offset', 0, 100, 1).name('第二层Z偏移').onChange(() => {
+    gradientFolder.add(this.bottomLayerParams, 'offset', 0, 100, 1).name('第三层Z偏移').onChange(() => {
       this.updateAllSecondLayerPositions()
     })
 
