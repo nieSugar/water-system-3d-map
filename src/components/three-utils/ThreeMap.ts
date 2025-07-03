@@ -664,6 +664,17 @@ export class THREEMAP extends THREE.Group {
     this.allThirdLayerMeshes.push(bottomWall)
   }
 
+  // 弹窗位置控制参数
+  private popupPositionParams = {
+    offsetX: 0,
+    offsetY: 50,
+    offsetZ: 0,
+    enabled: true
+  }
+
+  // 弹窗位置更新回调函数
+  private popupPositionUpdateCallback: (() => void) | null = null
+
   /**
    * 初始化GUI调试界面
    */
@@ -672,9 +683,54 @@ export class THREEMAP extends THREE.Group {
       this.gui.destroy()
     }
 
-    this.gui = new GUI({ title: '轮廓线调试' })
+    this.gui = new GUI({ title: '3D地图控制面板' })
 
-    // 虚线控制面板
+    // 弹窗位置控制面板 - 第一层，默认展开
+    const popupFolder = this.gui.addFolder('弹窗位置控制')
+
+    // 启用/禁用弹窗
+    popupFolder.add(this.popupPositionParams, 'enabled').name('启用弹窗').onChange(() => {
+      // 这里可以添加启用/禁用弹窗的逻辑
+    })
+
+    // X轴偏移控制
+    popupFolder.add(this.popupPositionParams, 'offsetX', -200, 200, 1).name('X轴偏移').onChange(() => {
+      if (this.popupPositionUpdateCallback) {
+        this.popupPositionUpdateCallback()
+      }
+    })
+
+    // Y轴偏移控制
+    popupFolder.add(this.popupPositionParams, 'offsetY', 0, 200, 1).name('Y轴偏移').onChange(() => {
+      if (this.popupPositionUpdateCallback) {
+        this.popupPositionUpdateCallback()
+      }
+    })
+
+    // Z轴偏移控制
+    popupFolder.add(this.popupPositionParams, 'offsetZ', -200, 200, 1).name('Z轴偏移').onChange(() => {
+      if (this.popupPositionUpdateCallback) {
+        this.popupPositionUpdateCallback()
+      }
+    })
+
+    // 重置弹窗位置按钮
+    popupFolder.add({
+      reset: () => {
+        this.popupPositionParams.offsetX = 0
+        this.popupPositionParams.offsetY = 50
+        this.popupPositionParams.offsetZ = 0
+        // 更新GUI显示
+        this.gui?.controllersRecursive().forEach(controller => {
+          controller.updateDisplay()
+        })
+      }
+    }, 'reset').name('重置位置')
+
+    // 默认展开弹窗控制面板
+    popupFolder.open()
+
+    // 虚线控制面板 - 默认不展开
     const dashedFolder = this.gui.addFolder('虚线控制')
 
     // 启用/禁用虚线
@@ -712,8 +768,8 @@ export class THREEMAP extends THREE.Group {
       this.updateAllOutlines()
     })
 
-    // 默认展开虚线面板
-    dashedFolder.open()
+    // 虚线面板默认不展开
+    dashedFolder.close()
 
     // ----------------------------- 颜色控制面板 ----------------------------- //
     const styleFolder = this.gui.addFolder('组样式')
@@ -739,10 +795,14 @@ export class THREEMAP extends THREE.Group {
         mat.needsUpdate = true
       })
 
-      grpFolder.open()
+      // 子文件夹默认不展开
+      grpFolder.close()
     })
 
-    // 全局纹理混合控制
+    // 组样式面板默认不展开
+    styleFolder.close()
+
+    // 全局纹理混合控制 - 默认不展开
     const globalFolder = this.gui.addFolder('全局')
     const mixParam = { value: this.textureMixRatio }
     const tintParam = { value: 0 }
@@ -765,7 +825,8 @@ export class THREEMAP extends THREE.Group {
       })
     })
 
-    globalFolder.open()
+    // 全局面板默认不展开
+    globalFolder.close()
 
     // -------------------- Z 轴颜色  -------------------- //
     const gradientFolder = this.gui.addFolder('Z 轴颜色')
@@ -811,10 +872,10 @@ export class THREEMAP extends THREE.Group {
       this.updateAllSecondLayerPositions()
     })
 
-    gradientFolder.open()
+    // Z轴颜色面板默认不展开
+    gradientFolder.close()
 
-    // 默认展开样式面板
-    styleFolder.open()
+    // 组样式面板默认不展开
 
     // -------------------- Bloom 控制 -------------------- //
     if (bloomPass) {
@@ -833,7 +894,7 @@ export class THREEMAP extends THREE.Group {
       bloomFolder.add(bloomParams, 'radius', 0, 2, 0.01).name('半径').onChange((v: number) => {
         bloomPass.radius = v
       })
-      bloomFolder.open()
+      // Bloom面板默认不展开
     }
 
     // -------------------- 区域标签位置控制 -------------------- //
@@ -869,9 +930,13 @@ export class THREEMAP extends THREE.Group {
             zController.updateDisplay()
           }
         }, 'reset').name('重置位置')
+
+        // 每个标签的子面板默认不展开
+        labelFolder.close()
       })
 
-      labelsFolder.open()
+      // 区域标签位置面板默认不展开
+      labelsFolder.close()
     }
   }
 
@@ -957,6 +1022,20 @@ export class THREEMAP extends THREE.Group {
         this.applyZGradient(geo, mat.color, depth)
       }
     })
+  }
+
+  /**
+   * 获取弹窗位置参数
+   */
+  getPopupPositionParams() {
+    return this.popupPositionParams
+  }
+
+  /**
+   * 设置弹窗位置更新回调函数
+   */
+  setPopupPositionUpdateCallback(callback: () => void) {
+    this.popupPositionUpdateCallback = callback
   }
 
   /**

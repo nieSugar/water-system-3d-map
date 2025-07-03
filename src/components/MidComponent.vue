@@ -8,6 +8,8 @@
   <div ref="containerRef" class="rounded-lg shadow-lg" style="width: 100%;height: 100%; background: transparent;">
 
   </div>
+
+
 </template>
 
 <style scoped></style>
@@ -28,9 +30,208 @@ import maodian from '../assets/锚点 拷贝 15.png'
 // 导入背景图片
 // @ts-ignore
 import bj from '../assets/bj@2x.png'
-
+// 导入弹框专用背景图片
+// @ts-ignore
+import modalBg from '../assets/弹框bj.png'
 // 创建DOM容器引用，用于挂载Three.js渲染器
 const containerRef = ref<HTMLDivElement>() as Ref<HTMLDivElement>
+
+// 当前显示的3D弹框对象
+let current3DPopup: CSS2DObject | null = null
+
+// 弹框背景图片尺寸
+let modalImageSize = { width: 320, height: 180 }
+
+// 根据区域名称获取对应的数据
+const getRegionData = (regionName: string) => {
+  // 模拟不同区域的数据
+  const regionDataMap: Record<string, any> = {
+    '康平县': { name: '康平县', complaints: '37485', percentage: '40.32' },
+    '法库县': { name: '法库县', complaints: '28756', percentage: '32.15' },
+    '新民市': { name: '新民市', complaints: '45123', percentage: '48.67' },
+    '辽中区': { name: '辽中区', complaints: '31245', percentage: '35.89' },
+    '于洪区': { name: '于洪区', complaints: '52341', percentage: '55.23' },
+    '沈北新区': { name: '沈北新区', complaints: '29876', percentage: '33.45' },
+    '大东区': { name: '大东区', complaints: '41567', percentage: '44.78' },
+    '和平区': { name: '和平区', complaints: '38945', percentage: '42.11' },
+    '苏家屯区': { name: '苏家屯区', complaints: '35678', percentage: '38.92' },
+    '浑南区': { name: '浑南区', complaints: '47892', percentage: '51.34' },
+    '沈河区': { name: '沈河区', complaints: '33456', percentage: '36.78' },
+    '皇姑区': { name: '皇姑区', complaints: '39234', percentage: '43.21' },
+    '铁西区': { name: '铁西区', complaints: '44567', percentage: '47.89' }
+  }
+
+  return regionDataMap[regionName] || { name: regionName, complaints: '0', percentage: '0' }
+}
+
+// 存储当前弹窗的原始位置
+let currentPopupBasePosition: number[] | null = null
+
+// 更新弹窗位置的函数
+const updatePopupPosition = () => {
+  if (current3DPopup && currentPopupBasePosition && map) {
+    const popupParams = map.getPopupPositionParams()
+    // 弹窗显示在锚点图标上方，基础偏移为锚点图标高度 + 一些间距
+    const baseYOffset = 30 // 锚点图标高度(20px) + 标签高度(24px) + 间距
+    const finalPosition = [
+      currentPopupBasePosition[0] + popupParams.offsetX,
+      currentPopupBasePosition[1] + baseYOffset + popupParams.offsetY,
+      currentPopupBasePosition[2] + popupParams.offsetZ
+    ]
+    current3DPopup.position.set(finalPosition[0], finalPosition[1], finalPosition[2])
+  }
+}
+
+// 创建3D弹框
+const create3DPopup = (regionData: any, position: number[]) => {
+  // 如果已有弹框，先移除
+  if (current3DPopup) {
+    scene.remove(current3DPopup)
+    current3DPopup = null
+  }
+
+  // 保存原始位置
+  currentPopupBasePosition = [...position]
+
+  // 获取弹窗位置参数
+  const popupParams = map.getPopupPositionParams()
+  // 弹窗显示在锚点图标上方，基础偏移为锚点图标高度 + 一些间距
+  const baseYOffset = 30 // 锚点图标高度(20px) + 标签高度(24px) + 间距
+  const finalPosition = [
+    position[0] + popupParams.offsetX,
+    position[1] + baseYOffset + popupParams.offsetY,
+    position[2] + popupParams.offsetZ
+  ]
+
+  // 创建弹框容器
+  const popupContainer = document.createElement('div')
+  popupContainer.style.position = 'relative'
+  popupContainer.style.width = `${modalImageSize.width}px`
+  popupContainer.style.height = `${modalImageSize.height}px`
+  popupContainer.style.backgroundImage = `url(${modalBg})`
+  popupContainer.style.backgroundSize = 'contain'
+  popupContainer.style.backgroundRepeat = 'no-repeat'
+  popupContainer.style.backgroundPosition = 'center'
+  popupContainer.style.filter = 'drop-shadow(0 0 15px rgba(0, 150, 255, 0.6))'
+  popupContainer.style.padding = '16px 20px'
+  popupContainer.style.color = 'white'
+  popupContainer.style.fontFamily = 'Arial, sans-serif'
+  popupContainer.style.pointerEvents = 'auto'
+  popupContainer.style.display = 'flex'
+  popupContainer.style.flexDirection = 'column'
+
+  // 创建关闭按钮
+  const closeBtn = document.createElement('button')
+  closeBtn.innerHTML = '×'
+  closeBtn.style.position = 'absolute'
+  closeBtn.style.top = '8px'
+  closeBtn.style.right = '12px'
+  closeBtn.style.background = 'none'
+  closeBtn.style.border = 'none'
+  closeBtn.style.color = '#ffffff'
+  closeBtn.style.fontSize = '20px'
+  closeBtn.style.cursor = 'pointer'
+  closeBtn.style.fontWeight = 'bold'
+  closeBtn.style.zIndex = '10'
+  closeBtn.style.transition = 'color 0.2s ease'
+  closeBtn.addEventListener('click', () => {
+    if (current3DPopup) {
+      scene.remove(current3DPopup)
+      current3DPopup = null
+    }
+  })
+  closeBtn.addEventListener('mouseenter', () => {
+    closeBtn.style.color = '#60a5fa'
+  })
+  closeBtn.addEventListener('mouseleave', () => {
+    closeBtn.style.color = '#ffffff'
+  })
+
+  // 创建标题区域
+  const titleArea = document.createElement('div')
+  titleArea.style.display = 'flex'
+  titleArea.style.alignItems = 'center'
+  titleArea.style.marginBottom = '16px'
+
+  const icon = document.createElement('div')
+  icon.innerHTML = '📍'
+  icon.style.width = '24px'
+  icon.style.height = '24px'
+  icon.style.background = 'linear-gradient(135deg, #3b82f6, #1d4ed8)'
+  icon.style.borderRadius = '50%'
+  icon.style.display = 'flex'
+  icon.style.alignItems = 'center'
+  icon.style.justifyContent = 'center'
+  icon.style.marginRight = '8px'
+  icon.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.3)'
+  icon.style.fontSize = '12px'
+
+  const title = document.createElement('div')
+  title.textContent = regionData.name
+  title.style.fontSize = '16px'
+  title.style.fontWeight = 'bold'
+  title.style.color = '#ffffff'
+  title.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.5)'
+
+  titleArea.appendChild(icon)
+  titleArea.appendChild(title)
+
+  // 创建数据区域
+  const dataArea = document.createElement('div')
+  dataArea.style.flex = '1'
+  dataArea.style.display = 'flex'
+  dataArea.style.flexDirection = 'column'
+  dataArea.style.gap = '8px'
+  dataArea.style.marginBottom = '16px'
+
+  // 格式化数字显示
+  const formatNumber = (num: string) => {
+    return num.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  }
+
+  const complaintsRow = document.createElement('div')
+  complaintsRow.style.display = 'flex'
+  complaintsRow.style.alignItems = 'center'
+  complaintsRow.style.justifyContent = 'space-between'
+  complaintsRow.innerHTML = `
+    <span style="color: #93c5fd; font-size: 14px; font-weight: 500;">客诉总量:</span>
+    <span style="color: #ffffff; font-size: 18px; font-weight: bold; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); margin-right: 4px;">${formatNumber(regionData.complaints)}</span>
+    <span style="color: #93c5fd; font-size: 12px;">个</span>
+  `
+
+  const percentageRow = document.createElement('div')
+  percentageRow.style.display = 'flex'
+  percentageRow.style.alignItems = 'center'
+  percentageRow.style.justifyContent = 'space-between'
+  percentageRow.innerHTML = `
+    <span style="color: #93c5fd; font-size: 14px; font-weight: 500;">占比:</span>
+    <span style="color: #ffffff; font-size: 18px; font-weight: bold; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); margin-right: 4px;">${regionData.percentage}</span>
+    <span style="color: #93c5fd; font-size: 12px;">%</span>
+  `
+
+  dataArea.appendChild(complaintsRow)
+  dataArea.appendChild(percentageRow)
+
+  // 创建底部按钮区域
+  const bottomSection = document.createElement('div')
+  bottomSection.style.display = 'flex'
+  bottomSection.style.justifyContent = 'center'
+
+  // 组装弹框
+  popupContainer.appendChild(closeBtn)
+  popupContainer.appendChild(titleArea)
+  popupContainer.appendChild(dataArea)
+  popupContainer.appendChild(bottomSection)
+
+  // 创建CSS2D对象
+  const popup3D = new CSS2DObject(popupContainer)
+  popup3D.position.set(finalPosition[0], finalPosition[1], finalPosition[2]) // 使用计算后的位置
+
+  scene.add(popup3D)
+  current3DPopup = popup3D
+
+  return popup3D
+}
 
 // 初始化Three.js场景，启用轨道控制器、光照和CSS2D渲染
 const { scene, renderer, camera } = useThree(containerRef, {
@@ -63,8 +264,24 @@ const eventCaster = new EventCaster(camera, renderer.domElement)
 // ThreeMap 实例将被赋值到该变量，供其他辅助函数访问
 let map: any
 
+// 获取弹框背景图片的实际尺寸
+const loadModalImageSize = () => {
+  const img = new Image()
+  img.onload = () => {
+    modalImageSize = {
+      width: img.naturalWidth,
+      height: img.naturalHeight
+    }
+    console.log('弹框图片尺寸:', modalImageSize)
+  }
+  img.src = modalBg
+}
+
 // 组件挂载后初始化3D地图
 onMounted(() => {
+  // 加载弹框背景图片尺寸
+  loadModalImageSize()
+
   // 异步加载沈阳市GeoJSON地理数据
   fetch('/shengyang.json')
     .then(res => res.json())
@@ -105,6 +322,9 @@ onMounted(() => {
 
       // 初始化GUI调试面板，传入区域标签对象
       map.initGUI(null, regionLabelObjects)
+
+      // 设置弹窗位置更新回调函数
+      map.setPopupPositionUpdateCallback(updatePopupPosition)
     })
 })
 
@@ -137,8 +357,9 @@ function addRegionLabels(scene: THREE.Scene) {
     containerDiv.style.display = 'flex'
     containerDiv.style.flexDirection = 'column'
     containerDiv.style.alignItems = 'center'
-    containerDiv.style.pointerEvents = 'none'
+    containerDiv.style.pointerEvents = 'auto' // 启用鼠标事件
     containerDiv.style.userSelect = 'none'
+    containerDiv.style.cursor = 'pointer' // 显示手型光标
 
     // 创建锚点图标
     const iconImg = document.createElement('img')
@@ -172,6 +393,29 @@ function addRegionLabels(scene: THREE.Scene) {
     labelText.style.fontFamily = 'Arial, sans-serif'
     labelText.style.whiteSpace = 'nowrap'
     labelText.style.padding = '0 8px'
+
+    // 添加点击事件
+    containerDiv.addEventListener('click', (event) => {
+      event.stopPropagation() // 阻止事件冒泡
+
+      // 根据区域名称设置不同的数据
+      const regionData = getRegionData(region.name)
+
+      // 创建3D弹框，显示在当前区域位置
+      create3DPopup(regionData, region.position)
+
+      console.log('点击了标签:', region.name)
+    })
+
+    // 添加悬停效果
+    containerDiv.addEventListener('mouseenter', () => {
+      containerDiv.style.transform = 'scale(1.1)'
+      containerDiv.style.transition = 'transform 0.2s ease'
+    })
+
+    containerDiv.addEventListener('mouseleave', () => {
+      containerDiv.style.transform = 'scale(1)'
+    })
 
     // 组装元素
     labelContainer.appendChild(labelText)
