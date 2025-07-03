@@ -667,7 +667,7 @@ export class THREEMAP extends THREE.Group {
   /**
    * 初始化GUI调试界面
    */
-  initGUI(bloomPass?: UnrealBloomPass | null) {
+  initGUI(bloomPass?: UnrealBloomPass | null, regionLabels?: any[]) {
     if (this.gui) {
       this.gui.destroy()
     }
@@ -834,6 +834,44 @@ export class THREEMAP extends THREE.Group {
         bloomPass.radius = v
       })
       bloomFolder.open()
+    }
+
+    // -------------------- 区域标签位置控制 -------------------- //
+    if (regionLabels && regionLabels.length > 0) {
+      const labelsFolder = this.gui.addFolder('区域标签位置')
+
+      regionLabels.forEach((label) => {
+        const labelFolder = labelsFolder.addFolder(label.userData.regionName)
+
+        // X轴位置控制
+        const xController = labelFolder.add(label.position, 'x', -200, 200, 1).name('X位置').onChange(() => {
+          // 位置更新会自动反映到3D场景中
+        })
+
+        // Y轴位置控制
+        const yController = labelFolder.add(label.position, 'y', 0, 100, 1).name('Y位置').onChange(() => {
+          // 位置更新会自动反映到3D场景中
+        })
+
+        // Z轴位置控制
+        const zController = labelFolder.add(label.position, 'z', -200, 200, 1).name('Z位置').onChange(() => {
+          // 位置更新会自动反映到3D场景中
+        })
+
+        // 重置按钮
+        labelFolder.add({
+          reset: () => {
+            const original = label.userData.originalPosition
+            label.position.set(original[0], original[1], original[2])
+            // 更新GUI控制器显示值
+            xController.updateDisplay()
+            yController.updateDisplay()
+            zController.updateDisplay()
+          }
+        }, 'reset').name('重置位置')
+      })
+
+      labelsFolder.open()
     }
   }
 

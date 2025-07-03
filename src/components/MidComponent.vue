@@ -93,17 +93,20 @@ onMounted(() => {
       // 将完整的3D地图添加到场景中
       scene.add(map)
 
-      // 初始化GUI调试面板
-      map.initGUI()
-
       // 为特定区域组合添加统一实线外边界，且保留内部虚线边界
       addClusterOutline(shenyang, ['康平县', '法库县'])
       addClusterOutline(shenyang, ['新民市', '辽中区'])
 
       // 添加区域标签，类似图片中的效果
-      // addRegionLabels(scene)
+      addRegionLabels(scene)
+
+      // 初始化GUI调试面板，传入区域标签对象
+      map.initGUI(null, regionLabelObjects)
     })
 })
+
+// 存储标签对象，用于GUI控制
+let regionLabelObjects: CSS2DObject[] = []
 
 // 添加区域标签函数
 function addRegionLabels(scene: any) {
@@ -113,7 +116,15 @@ function addRegionLabels(scene: any) {
     { name: '法库县', position: [20, 35, 30], color: '#ffffff' },
     { name: '新民市', position: [-80, 35, -20], color: '#ffffff' },
     { name: '辽中区', position: [-30, 35, -40], color: '#ffffff' },
-    { name: '沈阳市区', position: [0, 35, 0], color: '#ffffff' }
+    { name: '于洪区', position: [-20, 35, 10], color: '#ffffff' },
+    { name: '沈北新区', position: [10, 35, 40], color: '#ffffff' },
+    { name: '大东区', position: [15, 35, 5], color: '#ffffff' },
+    { name: '和平区', position: [5, 35, -5], color: '#ffffff' },
+    { name: '苏家屯区', position: [-10, 35, -25], color: '#ffffff' },
+    { name: '浑南区', position: [25, 35, -15], color: '#ffffff' },
+    { name: '沈河区', position: [10, 35, -10], color: '#ffffff' },
+    { name: '皇姑区', position: [-5, 35, 15], color: '#ffffff' },
+    { name: '铁西区', position: [-15, 35, -5], color: '#ffffff' }
   ]
 
   regionLabels.forEach(region => {
@@ -129,7 +140,9 @@ function addRegionLabels(scene: any) {
 
     const label = new CSS2DObject(labelDiv)
     label.position.set(region.position[0], region.position[1], region.position[2])
+    label.userData = { regionName: region.name, originalPosition: [...region.position] }
     scene.add(label)
+    regionLabelObjects.push(label)
   })
 }
 
