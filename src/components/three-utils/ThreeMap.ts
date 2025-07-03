@@ -844,17 +844,17 @@ export class THREEMAP extends THREE.Group {
         const labelFolder = labelsFolder.addFolder(label.userData.regionName)
 
         // X轴位置控制
-        const xController = labelFolder.add(label.position, 'x', -200, 200, 1).name('X位置').onChange(() => {
+        const xController = labelFolder.add(label.position, 'x', -500, 500, 1).name('X位置').onChange(() => {
           // 位置更新会自动反映到3D场景中
         })
 
         // Y轴位置控制
-        const yController = labelFolder.add(label.position, 'y', 0, 100, 1).name('Y位置').onChange(() => {
+        const yController = labelFolder.add(label.position, 'y', 0, 500, 1).name('Y位置').onChange(() => {
           // 位置更新会自动反映到3D场景中
         })
 
         // Z轴位置控制
-        const zController = labelFolder.add(label.position, 'z', -200, 200, 1).name('Z位置').onChange(() => {
+        const zController = labelFolder.add(label.position, 'z', -500, 500, 1).name('Z位置').onChange(() => {
           // 位置更新会自动反映到3D场景中
         })
 

@@ -25,6 +25,9 @@ import * as THREE from 'three'
 // 导入标记点图标
 // @ts-ignore
 import maodian from '../assets/锚点 拷贝 15.png'
+// 导入背景图片
+// @ts-ignore
+import bj from '../assets/bj@2x.png'
 
 // 创建DOM容器引用，用于挂载Three.js渲染器
 const containerRef = ref<HTMLDivElement>() as Ref<HTMLDivElement>
@@ -109,36 +112,73 @@ onMounted(() => {
 let regionLabelObjects: CSS2DObject[] = []
 
 // 添加区域标签函数
-function addRegionLabels(scene: any) {
-  // 定义需要显示标签的区域及其大致位置
+function addRegionLabels(scene: THREE.Scene) {
+  const color = '#efffff'
   const regionLabels = [
-    { name: '康平县', position: [-50, 35, 50], color: '#ffffff' },
-    { name: '法库县', position: [20, 35, 30], color: '#ffffff' },
-    { name: '新民市', position: [-80, 35, -20], color: '#ffffff' },
-    { name: '辽中区', position: [-30, 35, -40], color: '#ffffff' },
-    { name: '于洪区', position: [-20, 35, 10], color: '#ffffff' },
-    { name: '沈北新区', position: [10, 35, 40], color: '#ffffff' },
-    { name: '大东区', position: [15, 35, 5], color: '#ffffff' },
-    { name: '和平区', position: [5, 35, -5], color: '#ffffff' },
-    { name: '苏家屯区', position: [-10, 35, -25], color: '#ffffff' },
-    { name: '浑南区', position: [25, 35, -15], color: '#ffffff' },
-    { name: '沈河区', position: [10, 35, -10], color: '#ffffff' },
-    { name: '皇姑区', position: [-5, 35, 15], color: '#ffffff' },
-    { name: '铁西区', position: [-15, 35, -5], color: '#ffffff' }
+    { name: '康平县', position: [40, 35, -155], color },
+    { name: '法库县', position: [20, 35, -80], color },
+    { name: '新民市', position: [-50, 35, -10], color },
+    { name: '辽中区', position: [-70, 35, 110], color },
+    { name: '于洪区', position: [40, 35, 30], color },
+    { name: '沈北新区', position: [90, 35, -10], color },
+    { name: '大东区', position: [100, 35, 45], color },
+    { name: '和平区', position: [65, 35, 85], color },
+    { name: '苏家屯区', position: [50, 35, 110], color },
+    { name: '浑南区', position: [115, 35, 85], color },
+    { name: '沈河区', position: [90, 35, 76], color },
+    { name: '皇姑区', position: [80, 35, 50], color },
+    { name: '铁西区', position: [30, 35, 77], color }
   ]
 
   regionLabels.forEach(region => {
-    const labelDiv = document.createElement('div')
-    labelDiv.innerText = region.name
-    labelDiv.style.color = region.color
-    labelDiv.style.fontSize = '14px'
-    labelDiv.style.fontWeight = 'bold'
-    labelDiv.style.textShadow = '2px 2px 4px rgba(0,0,0,0.8)'
-    labelDiv.style.pointerEvents = 'none'
-    labelDiv.style.userSelect = 'none'
-    labelDiv.style.fontFamily = 'Arial, sans-serif'
+    // 创建容器div
+    const containerDiv = document.createElement('div')
+    containerDiv.style.position = 'relative'
+    containerDiv.style.display = 'flex'
+    containerDiv.style.flexDirection = 'column'
+    containerDiv.style.alignItems = 'center'
+    containerDiv.style.pointerEvents = 'none'
+    containerDiv.style.userSelect = 'none'
 
-    const label = new CSS2DObject(labelDiv)
+    // 创建锚点图标
+    const iconImg = document.createElement('img')
+    iconImg.src = maodian
+    iconImg.style.width = '20px'
+    iconImg.style.height = '20px'
+    iconImg.style.marginBottom = '2px'
+    iconImg.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))'
+    iconImg.style.display = 'block'
+    iconImg.style.margin = '0 auto 2px auto'
+
+    // 创建标签背景容器
+    const labelContainer = document.createElement('div')
+    labelContainer.style.position = 'relative'
+    labelContainer.style.display = 'flex'
+    labelContainer.style.alignItems = 'center'
+    labelContainer.style.justifyContent = 'center'
+    labelContainer.style.minWidth = '60px'
+    labelContainer.style.height = '24px'
+    labelContainer.style.backgroundImage = `url(${bj})`
+    labelContainer.style.backgroundSize = '100% 100%'
+    labelContainer.style.backgroundRepeat = 'no-repeat'
+    labelContainer.style.backgroundPosition = 'center'
+
+    // 创建文字标签
+    const labelText = document.createElement('div')
+    labelText.innerText = region.name
+    labelText.style.color = region.color
+    labelText.style.fontSize = '10px'
+    labelText.style.fontWeight = '300'
+    labelText.style.fontFamily = 'Arial, sans-serif'
+    labelText.style.whiteSpace = 'nowrap'
+    labelText.style.padding = '0 8px'
+
+    // 组装元素
+    labelContainer.appendChild(labelText)
+    containerDiv.appendChild(iconImg)
+    containerDiv.appendChild(labelContainer)
+
+    const label = new CSS2DObject(containerDiv)
     label.position.set(region.position[0], region.position[1], region.position[2])
     label.userData = { regionName: region.name, originalPosition: [...region.position] }
     scene.add(label)
