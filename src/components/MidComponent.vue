@@ -12,7 +12,8 @@
 <style scoped></style>
 
 <script setup lang="ts">
-import { ref, type Ref, onMounted } from 'vue';
+import { ref, type Ref, onMounted, reactive } from 'vue';
+import { get } from '../utils/request';
 // 导入自定义的Three.js工具类
 import { useThree, THREEMAP } from './three-utils';
 // 导入CSS2D渲染器，用于在3D场景中显示HTML元素
@@ -36,26 +37,54 @@ const containerRef = ref<HTMLDivElement>() as Ref<HTMLDivElement>
 // 弹框背景图片尺寸
 let modalImageSize = { width: 320, height: 180 }
 
-// 根据区域名称获取对应的数据
-const getRegionData = (regionName: string) => {
-  // 模拟不同区域的数据
-  const regionDataMap: Record<string, any> = {
-    '康平县': { name: '康平县', complaints: '37485', percentage: '40.32' },
-    '法库县': { name: '法库县', complaints: '28756', percentage: '32.15' },
-    '新民市': { name: '新民市', complaints: '45123', percentage: '48.67' },
-    '辽中区': { name: '辽中区', complaints: '31245', percentage: '35.89' },
-    '于洪区': { name: '于洪区', complaints: '52341', percentage: '55.23' },
-    '沈北新区': { name: '沈北新区', complaints: '29876', percentage: '33.45' },
-    '大东区': { name: '大东区', complaints: '41567', percentage: '44.78' },
-    '和平区': { name: '和平区', complaints: '38945', percentage: '42.11' },
-    '苏家屯区': { name: '苏家屯区', complaints: '35678', percentage: '38.92' },
-    '浑南区': { name: '浑南区', complaints: '47892', percentage: '51.34' },
-    '沈河区': { name: '沈河区', complaints: '33456', percentage: '36.78' },
-    '皇姑区': { name: '皇姑区', complaints: '39234', percentage: '43.21' },
-    '铁西区': { name: '铁西区', complaints: '44567', percentage: '47.89' }
-  }
+// 区域数据类型
+interface RegionData {
+  name: string
+  complaints: string
+  percentage: string
+}
 
+// 默认数据（接口未返回前展示这些值）
+const defaultRegionData: Record<string, RegionData> = {
+  '康平县': { name: '康平县', complaints: '37485', percentage: '40.32' },
+  '法库县': { name: '法库县', complaints: '28756', percentage: '32.15' },
+  '新民市': { name: '新民市', complaints: '45123', percentage: '48.67' },
+  '辽中区': { name: '辽中区', complaints: '31245', percentage: '35.89' },
+  '于洪区': { name: '于洪区', complaints: '52341', percentage: '55.23' },
+  '沈北新区': { name: '沈北新区', complaints: '29876', percentage: '33.45' },
+  '大东区': { name: '大东区', complaints: '41567', percentage: '44.78' },
+  '和平区': { name: '和平区', complaints: '38945', percentage: '42.11' },
+  '苏家屯区': { name: '苏家屯区', complaints: '35678', percentage: '38.92' },
+  '浑南区': { name: '浑南区', complaints: '47892', percentage: '51.34' },
+  '沈河区': { name: '沈河区', complaints: '33456', percentage: '36.78' },
+  '皇姑区': { name: '皇姑区', complaints: '39234', percentage: '43.21' },
+  '铁西区': { name: '铁西区', complaints: '44567', percentage: '47.89' }
+}
+
+// 响应式 Map，接口更新后这里的值会改变
+const regionDataMap = reactive<Record<string, RegionData>>({ ...defaultRegionData })
+
+// 千分位格式化
+const formatNumber = (num: string) => num.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+
+// 根据区域名称获取对应的数据
+const getRegionData = (regionName: string): RegionData => {
   return regionDataMap[regionName] || { name: regionName, complaints: '0', percentage: '0' }
+}
+
+// 拉取接口数据并更新 regionDataMap
+const fetchRegionData = async () => {
+  try {
+    const res = await get<RegionData[]>('/water/region-data')
+    if (Array.isArray(res)) {
+      res.forEach(item => {
+        regionDataMap[item.name] = { ...item }
+      })
+      refreshAllPopupContent()
+    }
+  } catch (err) {
+    console.error('获取区域数据失败: ', err)
+  }
 }
 
 // 容器 DOM 随 CSS2DObject 移动，无需额外位置更新
@@ -113,33 +142,56 @@ const createPopupElement = (regionName: string): HTMLDivElement => {
   dataArea.style.alignItems = 'flex-start'
   dataArea.style.gap = '8px'
   dataArea.style.marginBottom = '16px'
-  // 格式化数字显示
-  const formatNumber = (num: string) => {
-    return num.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-  }
 
   const complaintsRow = document.createElement('div')
   complaintsRow.style.display = 'grid'
   complaintsRow.style.gridTemplateColumns = '74px auto 12px'
   complaintsRow.style.columnGap = '6px'
   complaintsRow.style.alignItems = 'baseline'
-  complaintsRow.innerHTML = `
-    <span style="color: #93c5fd; font-size: 14px; font-weight: 500; text-align:right;">客诉总量:</span>
-    <span style="color: #ffffff; font-size: 20px; font-weight: bold; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);">${formatNumber(regionData.complaints)}</span>
-    <span style="color: #93c5fd; font-size: 12px;">个</span>
-  `
+
+  const complaintsLabel = document.createElement('span')
+  complaintsLabel.textContent = '客诉总量:'
+  complaintsLabel.style.cssText = 'color: #93c5fd; font-size: 14px; font-weight: 500; text-align:right;'
+
+  const complaintsValue = document.createElement('span')
+  complaintsValue.textContent = formatNumber(regionData.complaints)
+  complaintsValue.style.cssText = 'color: #ffffff; font-size: 20px; font-weight: bold; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);'
+
+  const complaintsUnit = document.createElement('span')
+  complaintsUnit.textContent = '个'
+  complaintsUnit.style.cssText = 'color: #93c5fd; font-size: 12px;'
+
+  complaintsRow.appendChild(complaintsLabel)
+  complaintsRow.appendChild(complaintsValue)
+  complaintsRow.appendChild(complaintsUnit)
 
   const percentageRow = document.createElement('div')
   percentageRow.style.display = 'grid'
   percentageRow.style.gridTemplateColumns = '74px auto 12px'
   percentageRow.style.columnGap = '6px'
   percentageRow.style.alignItems = 'baseline'
-  percentageRow.innerHTML = `
-    <span style="color: #93c5fd; font-size: 14px; font-weight: 500; text-align:right;">占比:</span>
-    <span style="color: #ffffff; font-size: 20px; font-weight: bold; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);">${regionData.percentage}</span>
-    <span style="color: #93c5fd; font-size: 12px;">%</span>
-  `
 
+  const percentageLabel = document.createElement('span')
+  percentageLabel.textContent = '占比:'
+  percentageLabel.style.cssText = 'color: #93c5fd; font-size: 14px; font-weight: 500; text-align:right;'
+
+  const percentageValue = document.createElement('span')
+  percentageValue.textContent = regionData.percentage
+  percentageValue.style.cssText = 'color: #ffffff; font-size: 20px; font-weight: bold; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);'
+
+  const percentageUnit = document.createElement('span')
+  percentageUnit.textContent = '%'
+  percentageUnit.style.cssText = 'color: #93c5fd; font-size: 12px;'
+
+  percentageRow.appendChild(percentageLabel)
+  percentageRow.appendChild(percentageValue)
+  percentageRow.appendChild(percentageUnit)
+
+  // 保存可变元素，后续更新时直接修改 textContent 即可
+  ;(popupContainer as any)._complaintsSpan = complaintsValue
+  ;(popupContainer as any)._percentageSpan = percentageValue
+
+  // 将数据行挂到 dataArea
   dataArea.appendChild(complaintsRow)
   dataArea.appendChild(percentageRow)
 
@@ -201,6 +253,9 @@ const loadModalImageSize = () => {
 onMounted(() => {
   // 加载弹框背景图片尺寸
   loadModalImageSize()
+
+  // 首次拉取区域数据
+  fetchRegionData()
 
   // 异步加载沈阳市GeoJSON地理数据
   fetch('/shengyang.json')
@@ -422,5 +477,21 @@ function addClusterOutline(shenyangData: any, names: string[]) {
   }
 
   map.add(clusterGroup)
+}
+
+// 更新所有弹窗的实时数据
+const refreshAllPopupContent = () => {
+  regionLabelObjects.forEach(label => {
+    const regionName: string = label.userData.regionName
+    const data = getRegionData(regionName)
+    const popup = label.userData.popupEl as HTMLDivElement
+    if (!popup) return
+
+    const complaintsSpan = (popup as any)._complaintsSpan as HTMLSpanElement | undefined
+    const percentageSpan = (popup as any)._percentageSpan as HTMLSpanElement | undefined
+
+    if (complaintsSpan) complaintsSpan.textContent = formatNumber(data.complaints)
+    if (percentageSpan) percentageSpan.textContent = data.percentage
+  })
 }
 </script>
