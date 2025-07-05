@@ -36,9 +36,6 @@ import modalBg from '../assets/dialog.png'
 // 创建DOM容器引用，用于挂载Three.js渲染器
 const containerRef = ref<HTMLDivElement>() as Ref<HTMLDivElement>
 
-// 当前显示的3D弹框对象
-let current3DPopup: CSS2DObject | null = null
-
 // 弹框背景图片尺寸
 let modalImageSize = { width: 320, height: 180 }
 
@@ -64,44 +61,12 @@ const getRegionData = (regionName: string) => {
   return regionDataMap[regionName] || { name: regionName, complaints: '0', percentage: '0' }
 }
 
-// 存储当前弹窗的原始位置
-let currentPopupBasePosition: number[] | null = null
+// 容器 DOM 随 CSS2DObject 移动，无需额外位置更新
+const updatePopupPosition = () => { }
 
-// 更新弹窗位置的函数
-const updatePopupPosition = () => {
-  if (current3DPopup && currentPopupBasePosition && map) {
-    const popupParams = map.getPopupPositionParams()
-    // 弹窗显示在锚点图标上方，基础偏移为锚点图标高度 + 一些间距
-    const baseYOffset = 30 // 锚点图标高度(20px) + 标签高度(24px) + 间距
-    const finalPosition = [
-      currentPopupBasePosition[0] + popupParams.offsetX,
-      currentPopupBasePosition[1] + baseYOffset + popupParams.offsetY,
-      currentPopupBasePosition[2] + popupParams.offsetZ
-    ]
-    current3DPopup.position.set(finalPosition[0], finalPosition[1], finalPosition[2])
-  }
-}
-
-// 创建3D弹框
-const create3DPopup = (regionData: any, position: number[]) => {
-  // 如果已有弹框，先移除
-  if (current3DPopup) {
-    scene.remove(current3DPopup)
-    current3DPopup = null
-  }
-
-  // 保存原始位置
-  currentPopupBasePosition = [...position]
-
-  // 获取弹窗位置参数
-  const popupParams = map.getPopupPositionParams()
-  // 弹窗显示在锚点图标上方，基础偏移为锚点图标高度 + 一些间距
-  const baseYOffset = 30 // 锚点图标高度(20px) + 标签高度(24px) + 间距
-  const finalPosition = [
-    position[0] + popupParams.offsetX,
-    position[1] + baseYOffset + popupParams.offsetY,
-    position[2] + popupParams.offsetZ
-  ]
+// 创建弹窗
+const createPopupElement = (regionName: string): HTMLDivElement => {
+  const regionData = getRegionData(regionName)
 
   // 创建弹框容器
   const popupContainer = document.createElement('div')
@@ -120,51 +85,11 @@ const create3DPopup = (regionData: any, position: number[]) => {
   popupContainer.style.display = 'flex'
   popupContainer.style.flexDirection = 'column'
 
-  // 创建关闭按钮
-  const closeBtn = document.createElement('button')
-  closeBtn.innerHTML = '×'
-  closeBtn.style.position = 'absolute'
-  closeBtn.style.top = '8px'
-  closeBtn.style.right = '12px'
-  closeBtn.style.background = 'none'
-  closeBtn.style.border = 'none'
-  closeBtn.style.color = '#ffffff'
-  closeBtn.style.fontSize = '20px'
-  closeBtn.style.cursor = 'pointer'
-  closeBtn.style.fontWeight = 'bold'
-  closeBtn.style.zIndex = '10'
-  closeBtn.style.transition = 'color 0.2s ease'
-  closeBtn.addEventListener('click', () => {
-    if (current3DPopup) {
-      scene.remove(current3DPopup)
-      current3DPopup = null
-    }
-  })
-  closeBtn.addEventListener('mouseenter', () => {
-    closeBtn.style.color = '#60a5fa'
-  })
-  closeBtn.addEventListener('mouseleave', () => {
-    closeBtn.style.color = '#ffffff'
-  })
-
   // 创建标题区域
   const titleArea = document.createElement('div')
   titleArea.style.display = 'flex'
   titleArea.style.alignItems = 'center'
   titleArea.style.marginBottom = '16px'
-
-  const icon = document.createElement('div')
-  icon.innerHTML = '📍'
-  icon.style.width = '24px'
-  icon.style.height = '24px'
-  icon.style.background = 'linear-gradient(135deg, #3b82f6, #1d4ed8)'
-  icon.style.borderRadius = '50%'
-  icon.style.display = 'flex'
-  icon.style.alignItems = 'center'
-  icon.style.justifyContent = 'center'
-  icon.style.marginRight = '8px'
-  icon.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.3)'
-  icon.style.fontSize = '12px'
 
   const title = document.createElement('div')
   title.textContent = regionData.name
@@ -173,7 +98,6 @@ const create3DPopup = (regionData: any, position: number[]) => {
   title.style.color = '#ffffff'
   title.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.5)'
 
-  titleArea.appendChild(icon)
   titleArea.appendChild(title)
 
   // 创建数据区域
@@ -218,19 +142,11 @@ const create3DPopup = (regionData: any, position: number[]) => {
   bottomSection.style.justifyContent = 'center'
 
   // 组装弹框
-  popupContainer.appendChild(closeBtn)
   popupContainer.appendChild(titleArea)
   popupContainer.appendChild(dataArea)
   popupContainer.appendChild(bottomSection)
 
-  // 创建CSS2D对象
-  const popup3D = new CSS2DObject(popupContainer)
-  popup3D.position.set(finalPosition[0], finalPosition[1], finalPosition[2]) // 使用计算后的位置
-
-  scene.add(popup3D)
-  current3DPopup = popup3D
-
-  return popup3D
+  return popupContainer
 }
 
 // 初始化Three.js场景，启用轨道控制器、光照和CSS2D渲染
@@ -394,28 +310,13 @@ function addRegionLabels(scene: THREE.Scene) {
     labelText.style.whiteSpace = 'nowrap'
     labelText.style.padding = '0 8px'
 
-    // 添加点击事件
-    containerDiv.addEventListener('click', (event) => {
-      event.stopPropagation() // 阻止事件冒泡
-
-      // 根据区域名称设置不同的数据
-      const regionData = getRegionData(region.name)
-
-      // 创建3D弹框，显示在当前区域位置
-      create3DPopup(regionData, region.position)
-
-      console.log('点击了标签:', region.name)
-    })
-
-    // 添加悬停效果
-    containerDiv.addEventListener('mouseenter', () => {
-      containerDiv.style.transform = 'scale(1.1)'
-      containerDiv.style.transition = 'transform 0.2s ease'
-    })
-
-    containerDiv.addEventListener('mouseleave', () => {
-      containerDiv.style.transform = 'scale(1)'
-    })
+    // 创建弹窗并作为 containerDiv 的子元素
+    const popupEl = createPopupElement(region.name)
+    popupEl.style.position = 'absolute'
+    popupEl.style.left = '106px'
+    popupEl.style.bottom = 'calc(100% - 5px)' // 位于锚点和标签之上
+    popupEl.style.transform = 'translateX(-50%)'
+    containerDiv.appendChild(popupEl)
 
     // 组装元素
     labelContainer.appendChild(labelText)
