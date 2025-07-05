@@ -32,7 +32,7 @@ import maodian from '../assets/锚点 拷贝 15.png'
 import bj from '../assets/bj@2x.png'
 // 导入弹框专用背景图片
 // @ts-ignore
-import modalBg from '../assets/弹框bj.png'
+import modalBg from '../assets/dialog.png'
 // 创建DOM容器引用，用于挂载Three.js渲染器
 const containerRef = ref<HTMLDivElement>() as Ref<HTMLDivElement>
 
