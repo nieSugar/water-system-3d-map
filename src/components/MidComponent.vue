@@ -5,10 +5,7 @@
 -->
 <template>
   <!-- 3D地图容器，作为Three.js渲染的挂载点 -->
-  <div ref="containerRef" class="rounded-lg shadow-lg" style="width: 100%;height: 100%; background: transparent;">
-
-  </div>
-
+  <div ref="containerRef" class="rounded-lg shadow-lg" style="width: 100%;height: 100%; background: transparent;"></div>
 
 </template>
 
@@ -17,7 +14,7 @@
 <script setup lang="ts">
 import { ref, type Ref, onMounted } from 'vue';
 // 导入自定义的Three.js工具类
-import { useThree, THREEMAP, EventCaster } from './three-utils';
+import { useThree, THREEMAP } from './three-utils';
 // 导入CSS2D渲染器，用于在3D场景中显示HTML元素
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js'
 // 导入沈阳市地图纹理图片
@@ -82,54 +79,64 @@ const createPopupElement = (regionName: string): HTMLDivElement => {
   popupContainer.style.color = 'white'
   popupContainer.style.fontFamily = 'Arial, sans-serif'
   popupContainer.style.pointerEvents = 'auto'
-  popupContainer.style.display = 'flex'
+  popupContainer.style.display = 'none'
   popupContainer.style.flexDirection = 'column'
+  popupContainer.style.cursor = 'pointer'
+
+  // 弹框添加点击事件
+  popupContainer.addEventListener('click', (e) => {
+    e.stopPropagation()
+    console.log(`Popup clicked: ${regionName}`)
+  })
 
   // 创建标题区域
   const titleArea = document.createElement('div')
-  titleArea.style.display = 'flex'
-  titleArea.style.alignItems = 'center'
   titleArea.style.marginBottom = '16px'
+  titleArea.style.height = '30px'
 
   const title = document.createElement('div')
   title.textContent = regionData.name
-  title.style.fontSize = '16px'
+  title.style.fontSize = '19px'
   title.style.fontWeight = 'bold'
   title.style.color = '#ffffff'
   title.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.5)'
+  title.style.textAlign = 'left'
+  title.style.marginLeft = '36px'
+  title.style.paddingTop = '7px'
 
   titleArea.appendChild(title)
 
   // 创建数据区域
   const dataArea = document.createElement('div')
-  dataArea.style.flex = '1'
   dataArea.style.display = 'flex'
   dataArea.style.flexDirection = 'column'
+  dataArea.style.alignItems = 'flex-start'
   dataArea.style.gap = '8px'
   dataArea.style.marginBottom = '16px'
-
   // 格式化数字显示
   const formatNumber = (num: string) => {
     return num.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   }
 
   const complaintsRow = document.createElement('div')
-  complaintsRow.style.display = 'flex'
-  complaintsRow.style.alignItems = 'center'
-  complaintsRow.style.justifyContent = 'space-between'
+  complaintsRow.style.display = 'grid'
+  complaintsRow.style.gridTemplateColumns = '74px auto 12px'
+  complaintsRow.style.columnGap = '6px'
+  complaintsRow.style.alignItems = 'baseline'
   complaintsRow.innerHTML = `
-    <span style="color: #93c5fd; font-size: 14px; font-weight: 500;">客诉总量:</span>
-    <span style="color: #ffffff; font-size: 18px; font-weight: bold; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); margin-right: 4px;">${formatNumber(regionData.complaints)}</span>
+    <span style="color: #93c5fd; font-size: 14px; font-weight: 500; text-align:right;">客诉总量:</span>
+    <span style="color: #ffffff; font-size: 20px; font-weight: bold; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);">${formatNumber(regionData.complaints)}</span>
     <span style="color: #93c5fd; font-size: 12px;">个</span>
   `
 
   const percentageRow = document.createElement('div')
-  percentageRow.style.display = 'flex'
-  percentageRow.style.alignItems = 'center'
-  percentageRow.style.justifyContent = 'space-between'
+  percentageRow.style.display = 'grid'
+  percentageRow.style.gridTemplateColumns = '74px auto 12px'
+  percentageRow.style.columnGap = '6px'
+  percentageRow.style.alignItems = 'baseline'
   percentageRow.innerHTML = `
-    <span style="color: #93c5fd; font-size: 14px; font-weight: 500;">占比:</span>
-    <span style="color: #ffffff; font-size: 18px; font-weight: bold; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); margin-right: 4px;">${regionData.percentage}</span>
+    <span style="color: #93c5fd; font-size: 14px; font-weight: 500; text-align:right;">占比:</span>
+    <span style="color: #ffffff; font-size: 20px; font-weight: bold; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);">${regionData.percentage}</span>
     <span style="color: #93c5fd; font-size: 12px;">%</span>
   `
 
@@ -150,7 +157,7 @@ const createPopupElement = (regionName: string): HTMLDivElement => {
 }
 
 // 初始化Three.js场景，启用轨道控制器、光照和CSS2D渲染
-const { scene, renderer, camera } = useThree(containerRef, {
+const { scene, camera } = useThree(containerRef, {
   controls: true,  // 启用鼠标控制（缩放、旋转、平移）
   light: true,     // 启用环境光照
   css2d: true,     // 启用CSS2D渲染器，支持HTML标签叠加
@@ -173,9 +180,6 @@ scene.add(ambientLight);
 
 // 取消场景背景色，保持透明，避免绘制深色背景板
 scene.background = null;
-
-// 创建事件投射器，用于处理3D对象的鼠标交互
-const eventCaster = new EventCaster(camera, renderer.domElement)
 
 // ThreeMap 实例将被赋值到该变量，供其他辅助函数访问
 let map: any
@@ -212,19 +216,6 @@ onMounted(() => {
           min: [122.422105, 41.199854]                // 纹理映射最小坐标
         }
       })
-
-      // 为地图的每个区域添加点击事件监听
-      // map.traverse((child) => {
-      //   if (child instanceof THREE.Mesh) {
-      //     eventCaster.addListener(child, 'click', (result) => {
-      //       console.log('点击区域:', result);
-      //       // 在点击位置创建新的标记点
-      //       sprite.position.copy(result.point)  // 复制点击位置坐标
-      //       sprite.position.y += 10             // 标记点稍微抬高，避免与地面重叠
-      //       scene.add(sprite)                   // 将标记点添加到场景
-      //     })
-      //   }
-      // })
 
       // 将完整的3D地图添加到场景中
       scene.add(map)
@@ -273,9 +264,7 @@ function addRegionLabels(scene: THREE.Scene) {
     containerDiv.style.display = 'flex'
     containerDiv.style.flexDirection = 'column'
     containerDiv.style.alignItems = 'center'
-    containerDiv.style.pointerEvents = 'auto' // 启用鼠标事件
     containerDiv.style.userSelect = 'none'
-    containerDiv.style.cursor = 'pointer' // 显示手型光标
 
     // 创建锚点图标
     const iconImg = document.createElement('img')
@@ -312,6 +301,7 @@ function addRegionLabels(scene: THREE.Scene) {
 
     // 创建弹窗并作为 containerDiv 的子元素
     const popupEl = createPopupElement(region.name)
+    popupEl.style.display = 'none'
     popupEl.style.position = 'absolute'
     popupEl.style.left = '106px'
     popupEl.style.bottom = 'calc(100% - 5px)' // 位于锚点和标签之上
@@ -325,10 +315,45 @@ function addRegionLabels(scene: THREE.Scene) {
 
     const label = new CSS2DObject(containerDiv)
     label.position.set(region.position[0], region.position[1], region.position[2])
-    label.userData = { regionName: region.name, originalPosition: [...region.position] }
+    label.userData = {
+      regionName: region.name,
+      originalPosition: [...region.position],
+      popupEl
+    }
     scene.add(label)
     regionLabelObjects.push(label)
   })
+
+  // 标签创建完毕后启动轮询
+  startPopupRotation()
+}
+
+let rotationInterval: any = null
+
+function startPopupRotation() {
+  if (rotationInterval) clearInterval(rotationInterval)
+  if (regionLabelObjects.length === 0) return
+
+  const sorted = [...regionLabelObjects].sort((a, b) => {
+    const dataA = getRegionData(a.userData.regionName)
+    const dataB = getRegionData(b.userData.regionName)
+    return parseInt(dataB.complaints) - parseInt(dataA.complaints)
+  })
+
+  let idx = 0
+
+  const showPopup = (index: number) => {
+    sorted.forEach(l => (l.userData.popupEl.style.display = 'none'))
+    const current = sorted[index]
+    if (current) current.userData.popupEl.style.display = 'block'
+  }
+
+  showPopup(idx)
+
+  rotationInterval = setInterval(() => {
+    idx = (idx + 1) % sorted.length
+    showPopup(idx)
+  }, 30000)
 }
 
 // 为由多个行政区组成的整体添加实线外边界
@@ -399,5 +424,3 @@ function addClusterOutline(shenyangData: any, names: string[]) {
   map.add(clusterGroup)
 }
 </script>
-
-<!-- 更新颜色方案\nconst colorMap: Record<string, number> = {\n  '康平县': 0xff0000,\n  '法库县': 0xff0000,\n  '新民市': 0xf7d358,\n  '辽中区': 0xf7d358,\n  '于洪区': 0x5dade2,\n  '沈北新区': 0x5dade2,\n  '大东区': 0x5dade2,\n  '和平区': 0x5dade2,\n  '沈河区': 0x5dade2,\n  '皇姑区': 0x5dade2,\n  '铁西区': 0x5dade2,\n  '浑南区': 0x5dade2,\n  '苏家屯区': 0x5dade2\n};\n\n// 设置透明度\nlet opacity = 0.85;\nif (['康平县', '法库县'].includes(name)) {\n  opacity = 0.6; // 透明红色\n} else if (['新民市', '辽中区'].includes(name)) {\n  opacity = 0.8; // 渐变黄色\n}\n\nconst material = new THREE.MeshPhongMaterial({ \n  color: colorMap[name] || 0x1e90ff,\n  side: THREE.DoubleSide, \n  transparent: true, \n  opacity\n});\n\n// 为康平县和法库县之间添加白色分割虚线\nif (['康平县', '法库县'].includes(name)) {\n  const borderMaterial = new THREE.LineDashedMaterial({ \n    color: 0xffffff, \n    dashSize: 10, \n    gapSize: 6, \n    linewidth: 1\n  });\n  const borderLine = new THREE.Line(borderGeometry, borderMaterial);\n  borderLine.computeLineDistances();\n  group.add(borderLine);\n} -->
