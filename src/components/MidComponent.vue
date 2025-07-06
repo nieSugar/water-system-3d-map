@@ -148,56 +148,106 @@ const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
 scene.add(ambientLight);
 scene.background = null;
 let map: any
-const loadModalImageSize = (scene: THREE.Scene) => {
+const loadModalImageSize = () => {
   const img = new Image()
   img.onload = () => {
     modalImageSize = {
       width: img.naturalWidth,
       height: img.naturalHeight
     }
-    addRegionLabels(scene)
   }
   img.src = modalBg
 }
-onMounted(async () => {
-  fetch('/shengyang.json')
-    .then(res => res.json())
-    .then(shenyang => {
-      map = new THREEMAP(shenyang, {
-        scale: 13000,
-        center: [-123.406664, -41.788074],
-        texture: {
-          value: new THREE.TextureLoader().load(sy),
-          max: [123.814145, 43.042711],
-          min: [122.422105, 41.199854]
-        }
-      })
-      scene.add(map)
-      addClusterOutline(shenyang, ['康平县', '法库县'])
-      addClusterOutline(shenyang, ['新民市', '辽中区'])
-      loadModalImageSize(scene)
-      map.initGUI(regionLabelObjects)
-      map.setPopupPositionUpdateCallback(updatePopupPosition)
-    })
-})
+
 let regionLabelObjects: CSS2DObject[] = []
-function addRegionLabels(scene: THREE.Scene) {
-  const color = '#efffff'
-  const regionLabels = [
-    { name: '康平县', position: [55, 35, -195], color },
-    { name: '法库县', position: [32, 35, -110], color },
-    { name: '新民市', position: [-50, 35, -10], color },
-    { name: '辽中区', position: [-80, 35, 90], color },
-    { name: '于洪区', position: [50, 35, 15], color },
-    { name: '沈北新区', position: [100, 35, -20], color },
-    { name: '大东区', position: [109, 35, 25], color },
-    { name: '和平区', position: [72, 35, 62], color },
-    { name: '苏家屯区', position: [65, 35, 90], color },
-    { name: '浑南区', position: [130, 35, 60], color },
-    { name: '沈河区', position: [98, 35, 52], color },
-    { name: '皇姑区', position: [88, 35, 32], color },
-    { name: '铁西区', position: [20, 35, 70], color }
+
+// 响应式配置
+const RESPONSIVE_CONFIG = {
+  // 基准屏幕尺寸（用于计算缩放比例）
+  baseScreen: { width: 1440, height: 1196 },
+  // 适配策略：'uniform' | 'aspect-fit' | 'fixed'
+  strategy: 'uniform' as 'uniform' | 'aspect-fit' | 'fixed',
+  // 最小和最大缩放限制
+  scaleRange: { min: 0.5, max: 2.0 }
+}
+
+// 基准标签位置（在基准屏幕尺寸下的理想位置）
+const BASE_REGION_LABELS = [
+  { name: '康平县', position: [55, 35, -195], color: '#efffff' },
+  { name: '法库县', position: [32, 35, -110], color: '#efffff' },
+  { name: '新民市', position: [-50, 35, -10], color: '#efffff' },
+  { name: '辽中区', position: [-80, 35, 90], color: '#efffff' },
+  { name: '于洪区', position: [50, 35, 15], color: '#efffff' },
+  { name: '沈北新区', position: [100, 35, -20], color: '#efffff' },
+  { name: '大东区', position: [109, 35, 25], color: '#efffff' },
+  { name: '和平区', position: [72, 35, 62], color: '#efffff' },
+  { name: '苏家屯区', position: [65, 35, 90], color: '#efffff' },
+  { name: '浑南区', position: [130, 35, 60], color: '#efffff' },
+  { name: '沈河区', position: [98, 35, 52], color: '#efffff' },
+  { name: '皇姑区', position: [88, 35, 32], color: '#efffff' },
+  { name: '铁西区', position: [20, 35, 70], color: '#efffff' }
+]
+
+// 计算响应式位置
+function calculateResponsivePosition(basePosition: number[]): number[] {
+  const container = containerRef.value
+  if (!container) return basePosition
+
+  const currentWidth = container.offsetWidth
+  const currentHeight = container.offsetHeight
+
+  if (RESPONSIVE_CONFIG.strategy === 'fixed') {
+    // 固定位置策略：不进行任何缩放
+    return basePosition
+  }
+
+  // 计算缩放比例
+  const scaleX = currentWidth / RESPONSIVE_CONFIG.baseScreen.width
+  const scaleY = currentHeight / RESPONSIVE_CONFIG.baseScreen.height
+
+  let scale: number
+
+  if (RESPONSIVE_CONFIG.strategy === 'uniform') {
+    // 统一缩放：使用较小的缩放比例来保持比例协调
+    scale = Math.min(scaleX, scaleY)
+  } else if (RESPONSIVE_CONFIG.strategy === 'aspect-fit') {
+    // 适应宽高比：根据容器的宽高比调整
+    const aspectRatio = currentWidth / currentHeight
+    const baseAspectRatio = RESPONSIVE_CONFIG.baseScreen.width / RESPONSIVE_CONFIG.baseScreen.height
+
+    if (aspectRatio > baseAspectRatio) {
+      // 容器更宽，以高度为准
+      scale = scaleY
+    } else {
+      // 容器更高，以宽度为准
+      scale = scaleX
+    }
+  } else {
+    scale = Math.min(scaleX, scaleY)
+  }
+
+  // 应用缩放限制
+  scale = Math.max(RESPONSIVE_CONFIG.scaleRange.min, Math.min(RESPONSIVE_CONFIG.scaleRange.max, scale))
+
+  // 应用缩放到X和Z坐标（Y坐标保持不变，因为是高度）
+  return [
+    basePosition[0] * scale,
+    basePosition[1], // 高度保持不变
+    basePosition[2] * scale
   ]
+}
+
+function addRegionLabels(scene: THREE.Scene) {
+  // 清除现有标签
+  regionLabelObjects.forEach(label => {
+    scene.remove(label)
+  })
+  regionLabelObjects = []
+
+  const regionLabels = BASE_REGION_LABELS.map(region => ({
+    ...region,
+    position: calculateResponsivePosition(region.position)
+  }))
   regionLabels.forEach(region => {
     const containerDiv = document.createElement('div')
     containerDiv.style.position = 'relative'
@@ -274,7 +324,7 @@ function startPopupRotation() {
   rotationInterval = setInterval(() => {
     idx = (idx + 1) % sorted.length
     showPopup(idx)
-  }, 30000)
+  }, 30000000)
 }
 function addClusterOutline(shenyangData: any, names: string[]) {
   const projection = (map as any).projection as (lnglat: [number, number]) => [number, number]
@@ -335,4 +385,84 @@ const refreshAllPopupContent = () => {
     if (percentageSpan) percentageSpan.textContent = data.percentage
   })
 }
+
+// 更新标签位置（响应式）
+const updateRegionLabelsPosition = () => {
+  if (!scene || regionLabelObjects.length === 0) return
+
+  console.log('更新标签位置 - 当前策略:', RESPONSIVE_CONFIG.strategy)
+  const container = containerRef.value
+  if (container) {
+    console.log('容器尺寸:', container.offsetWidth, 'x', container.offsetHeight)
+  }
+
+  regionLabelObjects.forEach((label, index) => {
+    const baseRegion = BASE_REGION_LABELS[index]
+    if (baseRegion) {
+      const newPosition = calculateResponsivePosition(baseRegion.position)
+      label.position.set(newPosition[0], newPosition[1], newPosition[2])
+      // 更新userData中的位置信息
+      label.userData.originalPosition = [...newPosition]
+
+      // 调试信息
+      console.log(`${baseRegion.name}: [${baseRegion.position.join(', ')}] -> [${newPosition.map(n => n.toFixed(1)).join(', ')}]`)
+    }
+  })
+}
+
+// 切换适配策略的辅助函数（用于调试）
+const switchStrategy = (strategy: 'uniform' | 'aspect-fit' | 'fixed') => {
+  RESPONSIVE_CONFIG.strategy = strategy
+  console.log('切换到策略:', strategy)
+  updateRegionLabelsPosition()
+}
+
+// 暴露给全局，方便调试
+if (typeof window !== 'undefined') {
+  (window as any).switchLabelStrategy = switchStrategy;
+  (window as any).updateLabelsPosition = updateRegionLabelsPosition;
+}
+
+// 监听窗口大小变化
+let resizeTimeout: ReturnType<typeof setTimeout> | null = null
+const handleResize = () => {
+  // 防抖处理，避免频繁更新
+  if (resizeTimeout) clearTimeout(resizeTimeout)
+  resizeTimeout = setTimeout(() => {
+    updateRegionLabelsPosition()
+  }, 100)
+}
+
+// 在组件挂载时添加监听器
+onMounted(() => {
+  loadModalImageSize()
+  window.addEventListener('resize', handleResize)
+
+  fetch('/shengyang.json')
+    .then(res => res.json())
+    .then(shenyang => {
+      map = new THREEMAP(shenyang, {
+        scale: 13000,
+        center: [-123.406664, -41.788074],
+        texture: {
+          value: new THREE.TextureLoader().load(sy),
+          max: [123.814145, 43.042711],
+          min: [122.422105, 41.199854]
+        }
+      })
+      scene.add(map)
+      addClusterOutline(shenyang, ['康平县', '法库县'])
+      addClusterOutline(shenyang, ['新民市', '辽中区'])
+      addRegionLabels(scene)
+      map.initGUI(regionLabelObjects)
+      map.setPopupPositionUpdateCallback(updatePopupPosition)
+    })
+})
+
+// 在组件卸载时移除监听器
+import { onBeforeUnmount } from 'vue'
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+  if (resizeTimeout) clearTimeout(resizeTimeout)
+})
 </script>
