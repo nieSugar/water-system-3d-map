@@ -324,7 +324,7 @@ function startPopupRotation() {
   rotationInterval = setInterval(() => {
     idx = (idx + 1) % sorted.length
     showPopup(idx)
-  }, 30000000)
+  }, 30000)
 }
 function addClusterOutline(shenyangData: any, names: string[]) {
   const projection = (map as any).projection as (lnglat: [number, number]) => [number, number]
