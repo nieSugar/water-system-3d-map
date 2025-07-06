@@ -18,6 +18,7 @@ declare module 'vue' {
     NumberOfSeatsModal: typeof import('./src/components/modal/NumberOfSeatsModal.vue')['default']
     Pie3D: typeof import('./src/components/Pie3D.vue')['default']
     PrograssBar: typeof import('./src/components/PrograssBar.vue')['default']
+    RegionInfoModal: typeof import('./src/components/modal/RegionInfoModal.vue')['default']
     RightComponent: typeof import('./src/components/RightComponent.vue')['default']
     TablePagination: typeof import('./src/components/modal/TablePagination.vue')['default']
     TodayCallTraffic: typeof import('./src/components/TodayCallTraffic.vue')['default']
