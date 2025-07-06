@@ -148,18 +148,18 @@ const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
 scene.add(ambientLight);
 scene.background = null;
 let map: any
-const loadModalImageSize = () => {
+const loadModalImageSize = (scene: THREE.Scene) => {
   const img = new Image()
   img.onload = () => {
     modalImageSize = {
       width: img.naturalWidth,
       height: img.naturalHeight
     }
+    addRegionLabels(scene)
   }
   img.src = modalBg
 }
 onMounted(async () => {
-  await loadModalImageSize()
   fetch('/shengyang.json')
     .then(res => res.json())
     .then(shenyang => {
@@ -175,7 +175,7 @@ onMounted(async () => {
       scene.add(map)
       addClusterOutline(shenyang, ['康平县', '法库县'])
       addClusterOutline(shenyang, ['新民市', '辽中区'])
-      addRegionLabels(scene)
+      loadModalImageSize(scene)
       map.initGUI(regionLabelObjects)
       map.setPopupPositionUpdateCallback(updatePopupPosition)
     })
@@ -274,7 +274,7 @@ function startPopupRotation() {
   rotationInterval = setInterval(() => {
     idx = (idx + 1) % sorted.length
     showPopup(idx)
-  }, 30000000)
+  }, 30000)
 }
 function addClusterOutline(shenyangData: any, names: string[]) {
   const projection = (map as any).projection as (lnglat: [number, number]) => [number, number]
