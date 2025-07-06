@@ -11,7 +11,6 @@
 import * as THREE from 'three';
 import * as d3 from 'd3';
 import { GUI } from 'lil-gui';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
 /**
  * THREEMAP 类 - GeoJSON 转 3D 地图渲染器
@@ -77,22 +76,27 @@ export class THREEMAP extends THREE.Group {
 
   // 分组对应默认颜色
   private groupColors: Record<string, number> = {
-    group1: 0xf77878, // 红色
-    group2: 0xebc547, // 黄色
-    group3: 0x3899df  // 蓝色
+    group1: 0xffa099, // 红色
+    group2: 0xffe89e, // 黄色
+    group3: 0x4db5ff  // 蓝色
   }
 
   // 每个分组共用一份材质
   private groupMaterials: Record<string, THREE.MeshLambertMaterial> = {}
 
-  // 纹理与区域色混合比（0=纯色，1=纯纹理）
-  private textureMixRatio = 0.65
+  // 纹理全局控制参数
+  private textureParams = {
+    // 纹理与区域色混合比（0=纯色，1=纯纹理）
+    mix: 0.65,
+    // 贴图染色开关（0=纯贴图，1=贴图乘组色）
+    tint: 1.0
+  }
 
   // ------------------ Z 轴侧面颜色控制 ------------------ //
   private zColorParams = {
     // 侧面颜色
     sideColor: 0x0ac2ff as number,
-    glow: 0.66 // 0-1 对应提升 1-4 倍亮度
+    glow: 0.39 // 0-1 对应提升 1-4 倍亮度
   }
 
   // ------------------ 底部半透明层控制 ------------------ //
@@ -102,7 +106,7 @@ export class THREEMAP extends THREE.Group {
     // 第三层（最底层外轮廓）透明度
     thirdOpacity: 0.4,
     // 第二层额外向下偏移量
-    offset: 40,
+    offset: 82,
     // 第二层侧面颜色
     secondColor: 0x0ac2ff as number,
     // 第三层侧面颜色
@@ -146,8 +150,8 @@ export class THREEMAP extends THREE.Group {
     // 自定义 shader，同之前逻辑
     material.onBeforeCompile = (shader) => {
       // 自定义混合权重 uniform以及贴图染色开关，并在 material.userData 上保留引用，方便后续修改
-      shader.uniforms.uMix = { value: this.textureMixRatio };
-      shader.uniforms.uTint = { value: 0.0 }; // 0 表示纯贴图，1 表示贴图乘组色
+      shader.uniforms.uMix = { value: this.textureParams.mix };
+      shader.uniforms.uTint = { value: this.textureParams.tint };
       (material as any).userData = (material as any).userData || {};
       (material as any).userData.uMix = shader.uniforms.uMix;
       (material as any).userData.uTint = shader.uniforms.uTint;
@@ -229,8 +233,8 @@ export class THREEMAP extends THREE.Group {
     // 保存纹理引用
     this.texture = options?.texture?.value || null
     // 如果提供了纹理，且尚未自定义混合比（保持 0），则默认启用纯纹理显示
-    if (this.texture && this.textureMixRatio === 0) {
-      this.textureMixRatio = 1
+    if (this.texture && this.textureParams.mix === 0) {
+      this.textureParams.mix = 1
     }
     if (mapData.type == 'FeatureCollection') {
       mapData.features.forEach((feature: any) => {
@@ -664,71 +668,16 @@ export class THREEMAP extends THREE.Group {
     this.allThirdLayerMeshes.push(bottomWall)
   }
 
-  // 弹窗位置控制参数
-  private popupPositionParams = {
-    offsetX: 0,
-    offsetY: 50,
-    offsetZ: 0,
-    enabled: true
-  }
-
-  // 弹窗位置更新回调函数
-  private popupPositionUpdateCallback: (() => void) | null = null
 
   /**
    * 初始化GUI调试界面
    */
-  initGUI(bloomPass?: UnrealBloomPass | null, regionLabels?: any[]) {
+  initGUI(regionLabels?: any[]) {
     if (this.gui) {
       this.gui.destroy()
     }
 
     this.gui = new GUI({ title: '3D地图控制面板' })
-
-    // 弹窗位置控制面板 - 第一层，默认展开
-    const popupFolder = this.gui.addFolder('弹窗位置控制')
-
-    // 启用/禁用弹窗
-    popupFolder.add(this.popupPositionParams, 'enabled').name('启用弹窗').onChange(() => {
-      // 这里可以添加启用/禁用弹窗的逻辑
-    })
-
-    // X轴偏移控制
-    popupFolder.add(this.popupPositionParams, 'offsetX', -200, 200, 1).name('X轴偏移').onChange(() => {
-      if (this.popupPositionUpdateCallback) {
-        this.popupPositionUpdateCallback()
-      }
-    })
-
-    // Y轴偏移控制
-    popupFolder.add(this.popupPositionParams, 'offsetY', 0, 200, 1).name('Y轴偏移').onChange(() => {
-      if (this.popupPositionUpdateCallback) {
-        this.popupPositionUpdateCallback()
-      }
-    })
-
-    // Z轴偏移控制
-    popupFolder.add(this.popupPositionParams, 'offsetZ', -200, 200, 1).name('Z轴偏移').onChange(() => {
-      if (this.popupPositionUpdateCallback) {
-        this.popupPositionUpdateCallback()
-      }
-    })
-
-    // 重置弹窗位置按钮
-    popupFolder.add({
-      reset: () => {
-        this.popupPositionParams.offsetX = 0
-        this.popupPositionParams.offsetY = 50
-        this.popupPositionParams.offsetZ = 0
-        // 更新GUI显示
-        this.gui?.controllersRecursive().forEach(controller => {
-          controller.updateDisplay()
-        })
-      }
-    }, 'reset').name('重置位置')
-
-    // 默认展开弹窗控制面板
-    popupFolder.open()
 
     // 虚线控制面板 - 默认不展开
     const dashedFolder = this.gui.addFolder('虚线控制')
@@ -804,12 +753,11 @@ export class THREEMAP extends THREE.Group {
 
     // 全局纹理混合控制 - 默认不展开
     const globalFolder = this.gui.addFolder('全局')
-    const mixParam = { value: this.textureMixRatio }
-    const tintParam = { value: 0 }
-    const mixController = globalFolder.add(mixParam, 'value', 0, 1, 0.01).name('纹理混合')
-    mixController.setValue(this.textureMixRatio)
+
+    // 纹理混合比例
+    const mixController = globalFolder.add(this.textureParams, 'mix', 0, 1, 0.01).name('纹理混合')
     mixController.onChange((val: number) => {
-      this.textureMixRatio = val
+      this.textureParams.mix = val
       // 遍历组材质，实时更新 uniform
       Object.values(this.groupMaterials).forEach(mat => {
         const u = (mat as any).userData?.uMix
@@ -817,8 +765,10 @@ export class THREEMAP extends THREE.Group {
       })
     })
 
-    globalFolder.add(tintParam, 'value', { '纯贴图': 0, '染色贴图': 1 }).name('贴图染色').onChange((val: any) => {
+    // 贴图染色
+    globalFolder.add(this.textureParams, 'tint', { '纯贴图': 0, '染色贴图': 1 }).name('贴图染色').onChange((val: any) => {
       const tintVal = typeof val === 'string' ? parseFloat(val) : Number(val)
+      this.textureParams.tint = tintVal
       Object.values(this.groupMaterials).forEach(mat => {
         const u = (mat as any).userData?.uTint
         if (u) u.value = tintVal
@@ -827,6 +777,8 @@ export class THREEMAP extends THREE.Group {
 
     // 全局面板默认不展开
     globalFolder.close()
+
+    // #region 底部半透明层控制
 
     // -------------------- Z 轴颜色  -------------------- //
     const gradientFolder = this.gui.addFolder('Z 轴颜色')
@@ -874,28 +826,10 @@ export class THREEMAP extends THREE.Group {
 
     // Z轴颜色面板默认不展开
     gradientFolder.close()
+    
+    // #endregion
 
     // 组样式面板默认不展开
-
-    // -------------------- Bloom 控制 -------------------- //
-    if (bloomPass) {
-      const bloomFolder = this.gui.addFolder('泛光')
-      const bloomParams = {
-        strength: bloomPass.strength,
-        threshold: bloomPass.threshold,
-        radius: bloomPass.radius
-      }
-      bloomFolder.add(bloomParams, 'strength', 0, 5, 0.01).name('强度').onChange((v: number) => {
-        bloomPass.strength = v
-      })
-      bloomFolder.add(bloomParams, 'threshold', 0, 1, 0.01).name('阈值').onChange((v: number) => {
-        bloomPass.threshold = v
-      })
-      bloomFolder.add(bloomParams, 'radius', 0, 2, 0.01).name('半径').onChange((v: number) => {
-        bloomPass.radius = v
-      })
-      // Bloom面板默认不展开
-    }
 
     // -------------------- 区域标签位置控制 -------------------- //
     if (regionLabels && regionLabels.length > 0) {
@@ -963,47 +897,6 @@ export class THREEMAP extends THREE.Group {
   }
 
   /**
-   * 更新所有实线轮廓的样式
-   */
-  private updateAllSolidOutlines() {
-    this.allSolidOutlines.forEach(outlineGroup => {
-      if (this.solidLineParams.enabled) {
-        outlineGroup.visible = true
-
-        // 更新组内所有线条的材质
-        outlineGroup.children.forEach((child: THREE.Object3D) => {
-          if (child instanceof THREE.LineSegments) {
-            const material = child.material as THREE.LineBasicMaterial
-            material.color.setHex(this.solidLineParams.color)
-            material.opacity = this.solidLineParams.opacity
-            material.transparent = this.solidLineParams.opacity < 1.0
-            material.needsUpdate = true
-          }
-        })
-
-        // 如果线宽发生变化，需要重新创建线条
-        this.recreateSolidOutlineIfNeeded(outlineGroup)
-      } else {
-        outlineGroup.visible = false
-      }
-    })
-  }
-
-  /**
-   * 如果需要，重新创建实线轮廓（当线宽变化时）
-   */
-  private recreateSolidOutlineIfNeeded(outlineGroup: THREE.Group) {
-    const currentLineCount = outlineGroup.children.length
-    const targetLineCount = Math.max(1, Math.floor(this.solidLineParams.linewidth))
-
-    if (currentLineCount !== targetLineCount) {
-      // 线宽变化了，需要重新创建
-      // 这里可以实现更复杂的逻辑，暂时保持简单
-      // 实际应用中可能需要重新生成整个轮廓
-    }
-  }
-
-  /**
    * 当底部颜色发生变化时，重新刷一遍所有区域的 Z 轴渐变颜色
    */
   private updateZGradientColors() {
@@ -1022,20 +915,6 @@ export class THREEMAP extends THREE.Group {
         this.applyZGradient(geo, mat.color, depth)
       }
     })
-  }
-
-  /**
-   * 获取弹窗位置参数
-   */
-  getPopupPositionParams() {
-    return this.popupPositionParams
-  }
-
-  /**
-   * 设置弹窗位置更新回调函数
-   */
-  setPopupPositionUpdateCallback(callback: () => void) {
-    this.popupPositionUpdateCallback = callback
   }
 
   /**

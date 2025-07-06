@@ -64,9 +64,6 @@ const defaultRegionData: Record<string, RegionData> = {
 // 响应式 Map，接口更新后这里的值会改变
 const regionDataMap = reactive<Record<string, RegionData>>({ ...defaultRegionData })
 
-// 千分位格式化
-const formatNumber = (num: string) => num.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-
 // 根据区域名称获取对应的数据
 const getRegionData = (regionName: string): RegionData => {
   return regionDataMap[regionName] || { name: regionName, complaints: '0', percentage: '0' }
@@ -132,6 +129,7 @@ const createPopupElement = (regionName: string): HTMLDivElement => {
   title.style.textAlign = 'left'
   title.style.marginLeft = '36px'
   title.style.paddingTop = '7px'
+  title.style.transform = 'skewX(-10deg)'
 
   titleArea.appendChild(title)
 
@@ -154,8 +152,8 @@ const createPopupElement = (regionName: string): HTMLDivElement => {
   complaintsLabel.style.cssText = 'color: #93c5fd; font-size: 14px; font-weight: 500; text-align:right;'
 
   const complaintsValue = document.createElement('span')
-  complaintsValue.textContent = formatNumber(regionData.complaints)
-  complaintsValue.style.cssText = 'color: #ffffff; font-size: 20px; font-weight: bold; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);'
+  complaintsValue.textContent = regionData.complaints
+  complaintsValue.style.cssText = 'color: rgb(232 255 255); font-size: 20px; font-weight: bold; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);'
 
   const complaintsUnit = document.createElement('span')
   complaintsUnit.textContent = '个'
@@ -177,7 +175,7 @@ const createPopupElement = (regionName: string): HTMLDivElement => {
 
   const percentageValue = document.createElement('span')
   percentageValue.textContent = regionData.percentage
-  percentageValue.style.cssText = 'color: #ffffff; font-size: 20px; font-weight: bold; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);'
+  percentageValue.style.cssText = 'color: rgb(232 255 255); font-size: 20px; font-weight: bold; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);'
 
   const percentageUnit = document.createElement('span')
   percentageUnit.textContent = '%'
@@ -187,9 +185,9 @@ const createPopupElement = (regionName: string): HTMLDivElement => {
   percentageRow.appendChild(percentageValue)
   percentageRow.appendChild(percentageUnit)
 
-  // 保存可变元素，后续更新时直接修改 textContent 即可
-  ;(popupContainer as any)._complaintsSpan = complaintsValue
-  ;(popupContainer as any)._percentageSpan = percentageValue
+    // 保存可变元素，后续更新时直接修改 textContent 即可
+    ; (popupContainer as any)._complaintsSpan = complaintsValue
+    ; (popupContainer as any)._percentageSpan = percentageValue
 
   // 将数据行挂到 dataArea
   dataArea.appendChild(complaintsRow)
@@ -283,7 +281,7 @@ onMounted(() => {
       addRegionLabels(scene)
 
       // 初始化GUI调试面板，传入区域标签对象
-      map.initGUI(null, regionLabelObjects)
+      map.initGUI(regionLabelObjects)
 
       // 设置弹窗位置更新回调函数
       map.setPopupPositionUpdateCallback(updatePopupPosition)
@@ -408,7 +406,7 @@ function startPopupRotation() {
   rotationInterval = setInterval(() => {
     idx = (idx + 1) % sorted.length
     showPopup(idx)
-  }, 30000)
+  }, 30000000)
 }
 
 // 为由多个行政区组成的整体添加实线外边界
@@ -490,7 +488,7 @@ const refreshAllPopupContent = () => {
     const complaintsSpan = (popup as any)._complaintsSpan as HTMLSpanElement | undefined
     const percentageSpan = (popup as any)._percentageSpan as HTMLSpanElement | undefined
 
-    if (complaintsSpan) complaintsSpan.textContent = formatNumber(data.complaints)
+    if (complaintsSpan) complaintsSpan.textContent = data.complaints
     if (percentageSpan) percentageSpan.textContent = data.percentage
   })
 }
